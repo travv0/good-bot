@@ -1,7 +1,7 @@
 module Types
 
-open Thoth.Json.Net
 open DSharpPlus.Entities
+open Thoth.Json.Net
 
 type Db =
     { Responses: string list

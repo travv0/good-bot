@@ -2,13 +2,13 @@ namespace GoodBot
 
 open DSharpPlus.CommandsNext
 open DSharpPlus.CommandsNext.Attributes
+open DSharpPlus.Entities
 open Data
 open Extensions
 open System
 open System.IO
 open System.Threading.Tasks
 open Thoth.Json.Net
-open DSharpPlus.Entities
 
 type Commands() =
     inherit BaseCommandModule()
@@ -49,7 +49,7 @@ type Commands() =
                 do! ctx.Respond(sprintf "Updated status to **%s %s**" activityTypeText name)
         }
 
-    member __.RussianRoulette(ctx: CommandContext) =
+    let russianRoulette (ctx: CommandContext) =
         async {
             do! ctx.TriggerTypingAsync() |> Async.AwaitTask
             let rand = Random()
@@ -64,11 +64,7 @@ type Commands() =
                 do! ctx.Respond("Click.")
         }
 
-    [<Command("rr")>]
-    member this.RussianRouletteAsync ctx =
-        this.RussianRoulette ctx |> Async.StartAsTask :> Task
-
-    member __.AddResponse (ctx: CommandContext) response =
+    let addResponse (ctx: CommandContext) response =
         async {
             if response = "" then
                 do! ctx.Respond("Missing response to add")
@@ -81,11 +77,7 @@ type Commands() =
                 do! ctx.Respond(sprintf "Added **%s** to responses" response)
         }
 
-    [<Command("add")>]
-    member this.AddResponseAsync(ctx, response) =
-        this.AddResponse ctx response |> Async.StartAsTask :> Task
-
-    member __.RemoveResponse (ctx: CommandContext) response =
+    let removeResponse (ctx: CommandContext) response =
         async {
             if response = "" then
                 do! ctx.Respond("Missing response to remove")
@@ -100,48 +92,54 @@ type Commands() =
                 do! ctx.Respond(sprintf "Removed **%s** from responses" response)
         }
 
-    [<Command("remove")>]
-    member this.RemoveResponseAsync(ctx, response) =
-        this.RemoveResponse ctx response
-        |> Async.StartAsTask
-        :> Task
-
-    member __.ListResponses(ctx: CommandContext) =
+    let listResponses (ctx: CommandContext) =
         async { do! ctx.Respond(String.Join("\n", db.Responses)) }
 
-    [<Command("list")>]
-    member this.ListResponsesAsync(ctx) =
-        this.ListResponses ctx |> Async.StartAsTask :> Task
-
-    member __.Playing (ctx: CommandContext) name =
+    let playing (ctx: CommandContext) name =
         async { do! updateStatus ctx name ActivityType.Playing }
 
-    member __.Watching (ctx: CommandContext) name =
+    let watching (ctx: CommandContext) name =
         async { do! updateStatus ctx name ActivityType.Watching }
 
-    member __.ListeningTo (ctx: CommandContext) name =
+    let listeningTo (ctx: CommandContext) name =
         async { do! updateStatus ctx name ActivityType.ListeningTo }
 
+    [<Command("rr")>]
+    member __.RussianRouletteAsync ctx =
+        russianRoulette ctx |> Async.StartAsTask :> Task
+
+    [<Command("add")>]
+    member __.AddResponseAsync(ctx, response) =
+        addResponse ctx response |> Async.StartAsTask :> Task
+
+    [<Command("remove")>]
+    member __.RemoveResponseAsync(ctx, response) =
+        removeResponse ctx response |> Async.StartAsTask :> Task
+
+    [<Command("list")>]
+    member __.ListResponsesAsync(ctx) =
+        listResponses ctx |> Async.StartAsTask :> Task
+
     [<Command("playing")>]
-    member this.PlayingAsync(ctx, name) =
-        this.Playing ctx name |> Async.StartAsTask :> Task
+    member __.PlayingAsync(ctx, name) =
+        playing ctx name |> Async.StartAsTask :> Task
 
     [<Command("watching")>]
-    member this.WatchingAsync(ctx, name) =
-        this.Watching ctx name |> Async.StartAsTask :> Task
+    member __.WatchingAsync(ctx, name) =
+        watching ctx name |> Async.StartAsTask :> Task
 
     [<Command("listeningto")>]
-    member this.ListeningToAsync(ctx, name) =
-        this.ListeningTo ctx name |> Async.StartAsTask :> Task
+    member __.ListeningToAsync(ctx, name) =
+        listeningTo ctx name |> Async.StartAsTask :> Task
 
     [<Command("playing")>]
-    member this.PlayingAsync(ctx) =
-        this.Playing ctx "" |> Async.StartAsTask :> Task
+    member __.PlayingAsync(ctx) =
+        playing ctx "" |> Async.StartAsTask :> Task
 
     [<Command("watching")>]
-    member this.WatchingAsync(ctx) =
-        this.Watching ctx "" |> Async.StartAsTask :> Task
+    member __.WatchingAsync(ctx) =
+        watching ctx "" |> Async.StartAsTask :> Task
 
     [<Command("listeningto")>]
-    member this.ListeningToAsync(ctx) =
-        this.ListeningTo ctx "" |> Async.StartAsTask :> Task
+    member __.ListeningToAsync(ctx) =
+        listeningTo ctx "" |> Async.StartAsTask :> Task

@@ -1,12 +1,12 @@
-open Data
 open DSharpPlus
 open DSharpPlus.CommandsNext
-open DSharpPlus.EventArgs
-open GoodBot
-open System.Threading.Tasks
-open System
-open Emzi0767.Utilities
 open DSharpPlus.Entities
+open DSharpPlus.EventArgs
+open Data
+open Emzi0767.Utilities
+open GoodBot
+open System
+open System.Threading.Tasks
 
 module Core =
     let rand = Random()
