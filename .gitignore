@@ -1,0 +1,6 @@
+/.ionide
+/.vscode
+/bin
+/config.json
+/db.json
+/obj
