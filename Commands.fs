@@ -126,7 +126,7 @@ type Commands() =
     let getDefineOutput (logger: ILogger) term: string option =
         let response =
             getDictionaryResponse term
-            >>= Decode.fromString (Decode.array Definition.Decoder)
+            >>= Decode.fromString Definition.DictDecoder
 
         let getUrbanOutput () =
             let urbanResponse =

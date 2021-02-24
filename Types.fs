@@ -32,11 +32,12 @@ type Definition =
     { PartOfSpeech: string option
       Definitions: string [] }
 
-    static member Decoder =
+    static member DictDecoder =
         Decode.object
             (fun get ->
                 { PartOfSpeech = get.Optional.Field "fl" Decode.string
                   Definitions = get.Required.Field "shortdef" (Decode.array Decode.string) })
+        |> Decode.array
 
     static member UrbanDecoder =
         Decode.object
