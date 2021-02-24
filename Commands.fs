@@ -204,36 +204,36 @@ type Commands() =
             do! updateStatus ctx name ActivityType.ListeningTo
         }
 
-    [<Command("rr")>]
+    [<Command("rr"); Description("Play Russian Roulette!")>]
     member __.RussianRouletteAsync(ctx) =
         russianRoulette ctx |> Async.StartAsTask :> Task
 
-    [<Command("define")>]
-    member __.DefineAsync(ctx, term) =
+    [<Command("define"); Description("Look up the definition of a word or phrase.")>]
+    member __.DefineAsync(ctx, [<Description("The word or phrase to look up.")>] term) =
         define ctx term |> Async.StartAsTask :> Task
 
-    [<Command("add")>]
-    member __.AddResponseAsync(ctx, response) =
+    [<Command("add"); Description("Add a response to be randomly selected when the bot replies after being pinged.")>]
+    member __.AddResponseAsync(ctx, [<Description("The response to add.")>] response) =
         addResponse ctx response |> Async.StartAsTask :> Task
 
-    [<Command("remove")>]
-    member __.RemoveResponseAsync(ctx, response) =
+    [<Command("remove"); Description("Remove a response from the bot's response pool.")>]
+    member __.RemoveResponseAsync(ctx, [<Description("The response to remove.")>] response) =
         removeResponse ctx response |> Async.StartAsTask :> Task
 
-    [<Command("list")>]
+    [<Command("list"); Description("List all responses in the response pool.")>]
     member __.ListResponsesAsync(ctx) =
         listResponses ctx |> Async.StartAsTask :> Task
 
-    [<Command("playing")>]
-    member __.PlayingAsync(ctx, name) =
+    [<Command("playing"); Description("Set bot's activity to Playing.")>]
+    member __.PlayingAsync(ctx, [<Description("What's the bot playing?")>] name) =
         playing ctx name |> Async.StartAsTask :> Task
 
-    [<Command("watching")>]
-    member __.WatchingAsync(ctx, name) =
+    [<Command("watching"); Description("Set bot's activity to Watching.")>]
+    member __.WatchingAsync(ctx, [<Description("What's the bot watching?")>] name) =
         watching ctx name |> Async.StartAsTask :> Task
 
-    [<Command("listeningto")>]
-    member __.ListeningToAsync(ctx, name) =
+    [<Command("listeningto"); Description("Set bot's activity to Listening To.")>]
+    member __.ListeningToAsync(ctx, [<Description("What's the bot listening to?")>] name) =
         listeningTo ctx name |> Async.StartAsTask :> Task
 
     [<Command("playing")>]
