@@ -20,6 +20,8 @@ type Commands() =
 
     let updateStatus (ctx: CommandContext) name activityType =
         async {
+            do! ctx.TriggerTypingAsync() |> Async.AwaitTask
+
             let activity =
                 if name = "" then
                     DiscordActivity()
@@ -204,22 +206,13 @@ type Commands() =
         }
 
     let playing (ctx: CommandContext) name =
-        async {
-            do! ctx.TriggerTypingAsync() |> Async.AwaitTask
-            do! updateStatus ctx name ActivityType.Playing
-        }
+        async { do! updateStatus ctx name ActivityType.Playing }
 
     let watching (ctx: CommandContext) name =
-        async {
-            do! ctx.TriggerTypingAsync() |> Async.AwaitTask
-            do! updateStatus ctx name ActivityType.Watching
-        }
+        async { do! updateStatus ctx name ActivityType.Watching }
 
     let listeningTo (ctx: CommandContext) name =
-        async {
-            do! ctx.TriggerTypingAsync() |> Async.AwaitTask
-            do! updateStatus ctx name ActivityType.ListeningTo
-        }
+        async { do! updateStatus ctx name ActivityType.ListeningTo }
 
     [<Command("rr"); Description("Play Russian Roulette!")>]
     member __.RussianRouletteAsync(ctx) =
