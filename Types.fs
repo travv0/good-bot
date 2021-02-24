@@ -1,6 +1,7 @@
 module Types
 
 open DSharpPlus.Entities
+open FSharpPlus
 open Thoth.Json.Net
 
 type Db =
@@ -26,3 +27,22 @@ type Config =
                   DbFile =
                       get.Optional.Field "dbFile" Decode.string
                       |> Option.defaultValue "db.json" })
+
+type Definition =
+    { PartOfSpeech: string option
+      Definitions: string [] }
+
+    static member Decoder =
+        Decode.object
+            (fun get ->
+                { PartOfSpeech = get.Optional.Field "fl" Decode.string
+                  Definitions = get.Required.Field "shortdef" (Decode.array Decode.string) })
+
+    static member UrbanDecoder =
+        Decode.object
+            (fun get ->
+                let defDecoder =
+                    Decode.object (fun get -> get.Required.Field "definition" Decode.string)
+
+                { PartOfSpeech = None
+                  Definitions = get.Required.Field "list" (Decode.array defDecoder) })
