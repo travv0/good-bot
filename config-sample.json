@@ -1,0 +1,7 @@
+{
+    "token": "discord-bot-token",
+    "dictKey": "dictionaryapi.com-key",
+    "urbanKey": "urban-dictionary-api-key",
+    "prefix": "!",
+    "dbFile": "db.json"
+}
