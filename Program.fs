@@ -45,7 +45,10 @@ module Core =
             Task.CompletedTask
 
     let messageCreated (dis: DiscordClient) (e: MessageCreateEventArgs) =
-        if exists ((=) dis.CurrentUser) e.MentionedUsers then
+        if not e.Author.IsBot
+           && (exists ((=) dis.CurrentUser) e.MentionedUsers
+               || e.Message.Content.Contains("@everyone")
+               || e.Message.Content.Contains("@here")) then
             let responseNum = rand.Next(db.Responses.Length)
             dis.SendMessageAsync(e.Channel, db.Responses.[responseNum]) :> Task
         elif e.Author.Id = 235148962103951360UL then
