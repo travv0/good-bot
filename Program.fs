@@ -6,6 +6,7 @@ open Data
 open Emzi0767.Utilities
 open FSharpPlus
 open GoodBot
+open Microsoft.Extensions.Logging
 open System
 open System.Threading.Tasks
 
@@ -13,17 +14,35 @@ module Core =
     let rand = Random()
 
     let clientReady (dis: DiscordClient) _ =
+        dis.Logger.LogInformation(sprintf "Bot ready using configuration %A" config)
+
         match db.Status with
         | Some (name, activityType) -> dis.UpdateStatusAsync(DiscordActivity(name, activityType))
         | None -> Task.CompletedTask
 
-    let clientErrored _ (e: ClientErrorEventArgs) =
-        printfn "%s error: %s" e.EventName e.Exception.Message
+    let clientErrored (dis: DiscordClient) (e: ClientErrorEventArgs) =
+        dis.Logger.LogError(
+            sprintf "Client error: %s: %s: %s" e.EventName (e.Exception.GetType().Name) e.Exception.Message
+        )
+
         Task.CompletedTask
 
-    let socketErrored _ (e: SocketErrorEventArgs) =
-        printfn "Socket error: %s" e.Exception.Message
+    let socketErrored (dis: DiscordClient) (e: SocketErrorEventArgs) =
+        dis.Logger.LogError(sprintf "Socket error: %s: %s" (e.Exception.GetType().Name) e.Exception.Message)
         Task.CompletedTask
+
+    let commandErrored (commands: CommandsNextExtension) (e: CommandErrorEventArgs) =
+        match e.Exception with
+        | :? ArgumentException ->
+            e.Context.RespondAsync(sprintf "Invalid arguments for command **%s**" e.Command.Name) :> Task
+        | :? Exceptions.CommandNotFoundException ->
+            e.Context.RespondAsync(sprintf "No command named **%s**" e.Command.Name) :> Task
+        | _ ->
+            commands.Client.Logger.LogError(
+                sprintf "Command error: %s: %s: %s" e.Command.Name (e.Exception.GetType().Name) e.Exception.Message
+            )
+
+            Task.CompletedTask
 
     let messageCreated (dis: DiscordClient) (e: MessageCreateEventArgs) =
         if exists ((=) dis.CurrentUser) e.MentionedUsers then
@@ -55,6 +74,7 @@ module Core =
         CommandsNextConfiguration(StringPrefixes = [ config.CommandPrefix ])
 
     let commands = discord.UseCommandsNext(commandConfig)
+    commands.add_CommandErrored (AsyncEventHandler<_, _>(commandErrored))
     commands.RegisterCommands<Commands>()
 
 [<EntryPoint>]

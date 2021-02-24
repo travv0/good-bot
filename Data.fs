@@ -1,11 +1,18 @@
 module Data
 
+open System
 open System.IO
 open Thoth.Json.Net
 open Types
 
 let config =
-    match File.ReadAllText("config.json")
+    let configPath =
+        match Environment.GetCommandLineArgs() with
+        | [| _ |] -> "config.json"
+        | [| _; configPath |] -> configPath
+        | _ -> failwith "too many arguments, expected at most one (config path)"
+
+    match File.ReadAllText(configPath)
           |> Decode.fromString Config.Decoder with
     | Ok config -> config
     | Error e -> failwith e

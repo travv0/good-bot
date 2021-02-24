@@ -8,6 +8,7 @@ open Extensions
 open FSharpPlus
 open FsHttp
 open FsHttp.DslCE
+open Microsoft.Extensions.Logging
 open System
 open System.IO
 open System.Threading.Tasks
@@ -29,15 +30,18 @@ type Commands() =
                 ctx.Client.UpdateStatusAsync(activity = activity)
                 |> Async.AwaitTask
 
-            db <-
-                { db with
-                      Status =
-                          if name = "" then
-                              None
-                          else
-                              Some(name, activityType) }
+            lock
+                db
+                (fun () ->
+                    db <-
+                        { db with
+                              Status =
+                                  if name = "" then
+                                      None
+                                  else
+                                      Some(name, activityType) }
 
-            File.WriteAllText(config.DbFile, Encode.Auto.toString (4, db))
+                    File.WriteAllText(config.DbFile, Encode.Auto.toString (4, db)))
 
             if name = "" then
                 do! ctx.RespondChunked("Removed status")
@@ -117,17 +121,12 @@ type Commands() =
             |> Response.toText
             |> Ok
 
-    let getDefineOutput term: string option =
+    let getDefineOutput (logger: ILogger) term: string option =
         let response =
             getDictionaryResponse term
             >>= Decode.fromString (Decode.array Definition.Decoder)
 
-        match response with
-        | Ok defs when defs.Length > 0 ->
-            map (buildDefineOutput term) defs
-            |> intercalate "\n\n"
-            |> Some
-        | _ ->
+        let getUrbanOutput () =
             let urbanResponse =
                 getUrbanResponse term
                 >>= Decode.fromString Definition.UrbanDecoder
@@ -136,14 +135,24 @@ type Commands() =
             | Ok defs when defs.Definitions.Length > 0 -> buildDefineOutput term defs |> Some
             | Ok _ -> None
             | Error e ->
-                printfn "%s" e
+                logger.LogDebug(sprintf "%s" e)
                 None
+
+        match response with
+        | Ok defs when defs.Length > 0 ->
+            map (buildDefineOutput term) defs
+            |> intercalate "\n\n"
+            |> Some
+        | Error e ->
+            logger.LogDebug(sprintf "%s" e)
+            getUrbanOutput ()
+        | _ -> getUrbanOutput ()
 
     let define (ctx: CommandContext) (term: string) =
         async {
             do! ctx.TriggerTypingAsync() |> Async.AwaitTask
 
-            match getDefineOutput term with
+            match getDefineOutput ctx.Client.Logger term with
             | Some output -> do! ctx.RespondChunked(output)
             | None -> do! ctx.RespondChunked("No definition found for **" ++ term ++ "**")
         }
@@ -155,11 +164,15 @@ type Commands() =
             if response = "" then
                 do! ctx.RespondChunked("Missing response to add")
             else
-                db <-
-                    { db with
-                          Responses = response :: db.Responses |> distinct }
+                lock
+                    db
+                    (fun () ->
+                        db <-
+                            { db with
+                                  Responses = response :: db.Responses |> distinct }
 
-                File.WriteAllText(config.DbFile, Encode.Auto.toString (4, db))
+                        File.WriteAllText(config.DbFile, Encode.Auto.toString (4, db)))
+
                 do! ctx.RespondChunked(sprintf "Added **%s** to responses" response)
         }
 
@@ -172,11 +185,15 @@ type Commands() =
             elif not (exists ((=) response) db.Responses) then
                 do! ctx.RespondChunked(sprintf "Response **%s** not found" response)
             else
-                db <-
-                    { db with
-                          Responses = db.Responses |> filter ((<>) response) }
+                lock
+                    db
+                    (fun () ->
+                        db <-
+                            { db with
+                                  Responses = db.Responses |> filter ((<>) response) }
 
-                File.WriteAllText(config.DbFile, Encode.Auto.toString (4, db))
+                        File.WriteAllText(config.DbFile, Encode.Auto.toString (4, db)))
+
                 do! ctx.RespondChunked(sprintf "Removed **%s** from responses" response)
         }
 
