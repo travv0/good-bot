@@ -13,38 +13,48 @@ open System.Threading.Tasks
 module Core =
     let rand = Random()
 
-    let clientReady (dis: DiscordClient) _ =
-        dis.Logger.LogInformation(sprintf "Bot ready using configuration %A" config)
+    let clientReady (dis : DiscordClient) _ =
+        dis.Logger.LogInformation $"Bot ready using configuration %A{config}"
 
         match db.Status with
-        | Some (name, activityType) -> dis.UpdateStatusAsync(DiscordActivity(name, activityType))
+        | Some (name, activityType) ->
+            dis.UpdateStatusAsync(DiscordActivity(name, activityType))
         | None -> Task.CompletedTask
 
-    let clientErrored (dis: DiscordClient) (e: ClientErrorEventArgs) =
-        dis.Logger.LogError(
-            sprintf "Client error: %s: %s: %s" e.EventName (e.Exception.GetType().Name) e.Exception.Message
-        )
+    let clientErrored (dis : DiscordClient) (e : ClientErrorEventArgs) =
+        dis.Logger.LogError
+            $"Client error: %s{e.EventName}: %s{e.Exception.GetType().Name}:\
+            %s{e.Exception.Message}"
 
         Task.CompletedTask
 
-    let socketErrored (dis: DiscordClient) (e: SocketErrorEventArgs) =
-        dis.Logger.LogError(sprintf "Socket error: %s: %s" (e.Exception.GetType().Name) e.Exception.Message)
+    let socketErrored (dis : DiscordClient) (e : SocketErrorEventArgs) =
+        dis.Logger.LogError
+            $"Socket error: %s{e.Exception.GetType().Name}:\
+            %s{e.Exception.Message}"
+
         Task.CompletedTask
 
-    let commandErrored (commands: CommandsNextExtension) (e: CommandErrorEventArgs) =
+    let commandErrored
+        (commands : CommandsNextExtension)
+        (e : CommandErrorEventArgs)
+        =
         match e.Exception with
         | :? ArgumentException ->
-            e.Context.RespondAsync(sprintf "Invalid arguments for command **%s**" e.Command.Name) :> Task
+            e.Context.RespondAsync
+                $"Invalid arguments for command **%s{e.Command.Name}**"
+            :> Task
         | :? Exceptions.CommandNotFoundException ->
-            e.Context.RespondAsync(sprintf "No command named **%s**" e.Command.Name) :> Task
+            e.Context.RespondAsync $"No command named **%s{e.Command.Name}**"
+            :> Task
         | _ ->
-            commands.Client.Logger.LogError(
-                sprintf "Command error: %s: %s: %s" e.Command.Name (e.Exception.GetType().Name) e.Exception.Message
-            )
+            commands.Client.Logger.LogError
+                $"Command error: %s{e.Command.Name}:\
+                %s{e.Exception.GetType().Name}: %s{e.Exception.Message}"
 
             Task.CompletedTask
 
-    let messageCreated (dis: DiscordClient) (e: MessageCreateEventArgs) =
+    let messageCreated (dis : DiscordClient) (e : MessageCreateEventArgs) =
         if not e.Author.IsBot
            && (exists ((=) dis.CurrentUser) e.MentionedUsers
                || e.Message.Content.Contains("@everyone")
@@ -56,14 +66,18 @@ module Core =
         else
             Task.CompletedTask
 
-    let typingStart (dis: DiscordClient) (e: TypingStartEventArgs) =
+    let typingStart (dis : DiscordClient) (e : TypingStartEventArgs) =
         if rand.Next(1000) = 0 then
-            dis.SendMessageAsync(e.Channel, sprintf "shut up <@%u>" e.User.Id) :> Task
+            dis.SendMessageAsync(e.Channel, $"shut up <@%u{e.User.Id}>") :> Task
         else
             Task.CompletedTask
 
     let discordConfig =
-        DiscordConfiguration(Token = config.DiscordToken, TokenType = TokenType.Bot, AutoReconnect = true)
+        DiscordConfiguration(
+            Token = config.DiscordToken,
+            TokenType = TokenType.Bot,
+            AutoReconnect = true
+        )
 
     let discord = new DiscordClient(discordConfig)
 

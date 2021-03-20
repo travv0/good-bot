@@ -25,8 +25,8 @@ let mutable db =
               |> Decode.Auto.fromString with
         | Ok db -> db
         | Error e ->
-            printfn "%s" e
+            printfn $"%s{e}"
             defaultDb
     with e ->
-        printfn "%s" e.Message
+        printfn $"%s{e.Message}"
         defaultDb

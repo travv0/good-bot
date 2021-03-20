@@ -5,15 +5,15 @@ open FSharpPlus
 open Thoth.Json.Net
 
 type Db =
-    { Responses: string list
-      Status: (string * ActivityType) option }
+    { Responses : string list
+      Status : (string * ActivityType) option }
 
 type Config =
-    { DiscordToken: string
-      DictKey: string option
-      UrbanKey: string option
-      CommandPrefix: string
-      DbFile: string }
+    { DiscordToken : string
+      DictKey : string option
+      UrbanKey : string option
+      CommandPrefix : string
+      DbFile : string }
 
     static member Decoder =
         Decode.object
@@ -29,21 +29,25 @@ type Config =
                       |> Option.defaultValue "db.json" })
 
 type Definition =
-    { PartOfSpeech: string option
-      Definitions: string [] }
+    { PartOfSpeech : string option
+      Definitions : string [] }
 
     static member DictDecoder =
         Decode.object
             (fun get ->
                 { PartOfSpeech = get.Optional.Field "fl" Decode.string
-                  Definitions = get.Required.Field "shortdef" (Decode.array Decode.string) })
+                  Definitions =
+                      get.Required.Field "shortdef" (Decode.array Decode.string) })
         |> Decode.array
 
     static member UrbanDecoder =
         Decode.object
             (fun get ->
                 let defDecoder =
-                    Decode.object (fun get -> get.Required.Field "definition" Decode.string)
+                    Decode.object
+                        (fun get ->
+                            get.Required.Field "definition" Decode.string)
 
                 { PartOfSpeech = None
-                  Definitions = get.Required.Field "list" (Decode.array defDecoder) })
+                  Definitions =
+                      get.Required.Field "list" (Decode.array defDecoder) })

@@ -18,7 +18,7 @@ open Types
 type Commands() =
     inherit BaseCommandModule()
 
-    let updateStatus (ctx: CommandContext) name activityType =
+    let updateStatus (ctx : CommandContext) name activityType =
         async {
             do! ctx.TriggerTypingAsync() |> Async.AwaitTask
 
@@ -43,7 +43,10 @@ type Commands() =
                                   else
                                       Some(name, activityType) }
 
-                    File.WriteAllText(config.DbFile, Encode.Auto.toString (4, db)))
+                    File.WriteAllText(
+                        config.DbFile,
+                        Encode.Auto.toString (4, db)
+                    ))
 
             if name = "" then
                 do! ctx.RespondChunked("Removed status")
@@ -54,12 +57,14 @@ type Commands() =
                     | ActivityType.Watching -> "Watching"
                     | ActivityType.ListeningTo -> "Listening to"
                     | ActivityType.Streaming -> "Streaming"
-                    | t -> failwithf "not implemented for %s" (t.ToString())
+                    | t -> failwithf $"not implemented for %s{string t}"
 
-                do! ctx.RespondChunked(sprintf "Updated status to **%s %s**" activityTypeText name)
+                do!
+                    ctx.RespondChunked
+                        $"Updated status to **%s{activityTypeText} %s{name}**"
         }
 
-    let russianRoulette (ctx: CommandContext) =
+    let russianRoulette (ctx : CommandContext) =
         async {
             do! ctx.TriggerTypingAsync() |> Async.AwaitTask
             let rand = Random()
@@ -74,7 +79,7 @@ type Commands() =
                 do! ctx.RespondChunked("Click.")
         }
 
-    let buildDefineOutput term (definition: Definition) =
+    let buildDefineOutput term (definition : Definition) =
         let definitions =
             match definition.Definitions with
             | [| def |] -> def
@@ -117,13 +122,17 @@ type Commands() =
                 )
 
                 Header "x-rapidapi-key" apiKey
-                Header "x-rapidapi-host" "mashape-community-urban-dictionary.p.rapidapi.com"
+
+                Header
+                    "x-rapidapi-host"
+                    "mashape-community-urban-dictionary.p.rapidapi.com"
+
                 Header "useQueryString" "true"
             }
             |> Response.toText
             |> Ok
 
-    let getDefineOutput (logger: ILogger) term: string option =
+    let getDefineOutput (logger : ILogger) term : string option =
         let response =
             getDictionaryResponse term
             >>= Decode.fromString Definition.DictDecoder
@@ -134,10 +143,11 @@ type Commands() =
                 >>= Decode.fromString Definition.UrbanDecoder
 
             match urbanResponse with
-            | Ok defs when defs.Definitions.Length > 0 -> buildDefineOutput term defs |> Some
+            | Ok defs when defs.Definitions.Length > 0 ->
+                buildDefineOutput term defs |> Some
             | Ok _ -> None
             | Error e ->
-                logger.LogDebug(sprintf "%s" e)
+                logger.LogDebug $"%s{e}"
                 None
 
         match response with
@@ -146,20 +156,24 @@ type Commands() =
             |> intercalate "\n\n"
             |> Some
         | Error e ->
-            logger.LogDebug(sprintf "%s" e)
+            logger.LogDebug $"%s{e}"
             getUrbanOutput ()
         | _ -> getUrbanOutput ()
 
-    let define (ctx: CommandContext) (term: string) =
+    let define (ctx : CommandContext) (term : string) =
         async {
             do! ctx.TriggerTypingAsync() |> Async.AwaitTask
 
             match getDefineOutput ctx.Client.Logger term with
             | Some output -> do! ctx.RespondChunked(output)
-            | None -> do! ctx.RespondChunked("No definition found for **" ++ term ++ "**")
+            | None ->
+                do!
+                    ctx.RespondChunked(
+                        "No definition found for **" ++ term ++ "**"
+                    )
         }
 
-    let addResponse (ctx: CommandContext) response =
+    let addResponse (ctx : CommandContext) response =
         async {
             do! ctx.TriggerTypingAsync() |> Async.AwaitTask
 
@@ -171,89 +185,127 @@ type Commands() =
                     (fun () ->
                         db <-
                             { db with
-                                  Responses = response :: db.Responses |> distinct }
+                                  Responses =
+                                      response :: db.Responses |> distinct }
 
-                        File.WriteAllText(config.DbFile, Encode.Auto.toString (4, db)))
+                        File.WriteAllText(
+                            config.DbFile,
+                            Encode.Auto.toString (4, db)
+                        ))
 
-                do! ctx.RespondChunked(sprintf "Added **%s** to responses" response)
+                do! ctx.RespondChunked $"Added **%s{response}** to responses"
         }
 
-    let removeResponse (ctx: CommandContext) response =
+    let removeResponse (ctx : CommandContext) response =
         async {
             do! ctx.TriggerTypingAsync() |> Async.AwaitTask
 
             if response = "" then
                 do! ctx.RespondChunked("Missing response to remove")
             elif not (exists ((=) response) db.Responses) then
-                do! ctx.RespondChunked(sprintf "Response **%s** not found" response)
+                do! ctx.RespondChunked $"Response **%s{response}** not found"
             else
                 lock
                     db
                     (fun () ->
                         db <-
                             { db with
-                                  Responses = db.Responses |> filter ((<>) response) }
+                                  Responses =
+                                      db.Responses |> filter ((<>) response) }
 
-                        File.WriteAllText(config.DbFile, Encode.Auto.toString (4, db)))
+                        File.WriteAllText(
+                            config.DbFile,
+                            Encode.Auto.toString (4, db)
+                        ))
 
-                do! ctx.RespondChunked(sprintf "Removed **%s** from responses" response)
+                do!
+                    ctx.RespondChunked
+                        $"Removed **%s{response}** from responses"
         }
 
-    let listResponses (ctx: CommandContext) =
+    let listResponses (ctx : CommandContext) =
         async {
             do! ctx.TriggerTypingAsync() |> Async.AwaitTask
             do! ctx.RespondChunked(String.Join("\n", db.Responses))
         }
 
-    let playing (ctx: CommandContext) name =
+    let playing (ctx : CommandContext) name =
         async { do! updateStatus ctx name ActivityType.Playing }
 
-    let watching (ctx: CommandContext) name =
+    let watching (ctx : CommandContext) name =
         async { do! updateStatus ctx name ActivityType.Watching }
 
-    let listeningTo (ctx: CommandContext) name =
+    let listeningTo (ctx : CommandContext) name =
         async { do! updateStatus ctx name ActivityType.ListeningTo }
 
     [<Command("rr"); Description("Play Russian Roulette!")>]
-    member __.RussianRouletteAsync(ctx) =
+    member _.RussianRouletteAsync(ctx) =
         russianRoulette ctx |> Async.StartAsTask :> Task
 
-    [<Command("define"); Description("Look up the definition of a word or phrase.")>]
-    member __.DefineAsync(ctx, [<Description("The word or phrase to look up.")>] term) =
+    [<Command("define");
+      Description("Look up the definition of a word or phrase.")>]
+    member _.DefineAsync
+        (
+            ctx,
+            [<Description("The word or phrase to look up.")>] term
+        ) =
         define ctx term |> Async.StartAsTask :> Task
 
-    [<Command("add"); Description("Add a response to be randomly selected when the bot replies after being pinged.")>]
-    member __.AddResponseAsync(ctx, [<Description("The response to add.")>] response) =
+    [<Command("add");
+      Description("Add a response to be randomly selected when the bot replies after being pinged.")>]
+    member _.AddResponseAsync
+        (
+            ctx,
+            [<Description("The response to add.")>] response
+        ) =
         addResponse ctx response |> Async.StartAsTask :> Task
 
-    [<Command("remove"); Description("Remove a response from the bot's response pool.")>]
-    member __.RemoveResponseAsync(ctx, [<Description("The response to remove.")>] response) =
+    [<Command("remove");
+      Description("Remove a response from the bot's response pool.")>]
+    member _.RemoveResponseAsync
+        (
+            ctx,
+            [<Description("The response to remove.")>] response
+        ) =
         removeResponse ctx response |> Async.StartAsTask :> Task
 
     [<Command("list"); Description("List all responses in the response pool.")>]
-    member __.ListResponsesAsync(ctx) =
+    member _.ListResponsesAsync(ctx) =
         listResponses ctx |> Async.StartAsTask :> Task
 
     [<Command("playing"); Description("Set bot's activity to Playing.")>]
-    member __.PlayingAsync(ctx, [<Description("What's the bot playing?")>] name) =
+    member _.PlayingAsync
+        (
+            ctx,
+            [<Description("What's the bot playing?")>] name
+        ) =
         playing ctx name |> Async.StartAsTask :> Task
 
     [<Command("watching"); Description("Set bot's activity to Watching.")>]
-    member __.WatchingAsync(ctx, [<Description("What's the bot watching?")>] name) =
+    member _.WatchingAsync
+        (
+            ctx,
+            [<Description("What's the bot watching?")>] name
+        ) =
         watching ctx name |> Async.StartAsTask :> Task
 
-    [<Command("listeningto"); Description("Set bot's activity to Listening To.")>]
-    member __.ListeningToAsync(ctx, [<Description("What's the bot listening to?")>] name) =
+    [<Command("listeningto");
+      Description("Set bot's activity to Listening To.")>]
+    member _.ListeningToAsync
+        (
+            ctx,
+            [<Description("What's the bot listening to?")>] name
+        ) =
         listeningTo ctx name |> Async.StartAsTask :> Task
 
     [<Command("playing")>]
-    member __.PlayingAsync(ctx) =
+    member _.PlayingAsync(ctx) =
         playing ctx "" |> Async.StartAsTask :> Task
 
     [<Command("watching")>]
-    member __.WatchingAsync(ctx) =
+    member _.WatchingAsync(ctx) =
         watching ctx "" |> Async.StartAsTask :> Task
 
     [<Command("listeningto")>]
-    member __.ListeningToAsync(ctx) =
+    member _.ListeningToAsync(ctx) =
         listeningTo ctx "" |> Async.StartAsTask :> Task
