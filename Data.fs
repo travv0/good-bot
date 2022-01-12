@@ -12,8 +12,10 @@ let config =
         | [| _; configPath |] -> configPath
         | _ -> failwith "too many arguments, expected at most one (config path)"
 
-    match File.ReadAllText(configPath)
-          |> Decode.fromString Config.Decoder with
+    match
+        File.ReadAllText(configPath)
+        |> Decode.fromString Config.Decoder
+        with
     | Ok config -> config
     | Error e -> failwith e
 
@@ -21,12 +23,15 @@ let mutable db =
     let defaultDb = { Responses = [ "hi" ]; Status = None }
 
     try
-        match File.ReadAllText(config.DbFile)
-              |> Decode.Auto.fromString with
+        match
+            File.ReadAllText(config.DbFile)
+            |> Decode.fromString Db.Decoder
+            with
         | Ok db -> db
         | Error e ->
             printfn $"%s{e}"
             defaultDb
-    with e ->
+    with
+    | e ->
         printfn $"%s{e.Message}"
         defaultDb
