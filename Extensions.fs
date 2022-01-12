@@ -1,6 +1,7 @@
 module Extensions
 
 open DSharpPlus.CommandsNext
+open DSharpPlus.Entities
 open FSharpPlus
 open System.Threading.Tasks
 
@@ -13,3 +14,6 @@ type CommandContext with
             |> Async.RunSynchronously
 
         Task.CompletedTask |> Async.AwaitTask
+
+type DiscordUser with
+    member user.IsCarl = user.Id = 235148962103951360UL

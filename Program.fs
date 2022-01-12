@@ -4,6 +4,7 @@ open DSharpPlus.Entities
 open DSharpPlus.EventArgs
 open Data
 open Emzi0767.Utilities
+open Extensions
 open FSharpPlus
 open GoodBot
 open Microsoft.Extensions.Logging
@@ -53,7 +54,7 @@ module Core =
                || e.Message.Content.Contains("@here")) then
             let responseNum = rand.Next(db.Responses.Length)
             e.Message.RespondAsync(db.Responses.[responseNum]) :> Task
-        elif e.Author.Id = 235148962103951360UL then
+        elif e.Author.IsCarl then
             e.Message.RespondAsync("Carl is a cuck") :> Task
         else
             Task.CompletedTask
