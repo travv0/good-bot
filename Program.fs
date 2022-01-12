@@ -52,9 +52,9 @@ module Core =
                || e.Message.Content.Contains("@everyone")
                || e.Message.Content.Contains("@here")) then
             let responseNum = rand.Next(db.Responses.Length)
-            dis.SendMessageAsync(e.Channel, db.Responses.[responseNum]) :> Task
+            e.Message.RespondAsync(db.Responses.[responseNum]) :> Task
         elif e.Author.Id = 235148962103951360UL then
-            dis.SendMessageAsync(e.Channel, "Carl is a cuck") :> Task
+            e.Message.RespondAsync("Carl is a cuck") :> Task
         else
             Task.CompletedTask
 
