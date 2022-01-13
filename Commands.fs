@@ -54,6 +54,7 @@ type Commands() =
                     | ActivityType.Watching -> "Watching"
                     | ActivityType.ListeningTo -> "Listening to"
                     | ActivityType.Streaming -> "Streaming"
+                    | ActivityType.Competing -> "Competing in"
                     | t -> failwithf $"not implemented for %s{string t}"
 
                 do! ctx.RespondChunked $"Updated status to **%s{activityTypeText} %s{name}**"
