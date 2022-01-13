@@ -121,22 +121,22 @@ type Commands() =
             |> Response.toText
             |> Ok
 
+    let getUrbanOutput (logger: ILogger) term =
+        let urbanResponse =
+            getUrbanResponse term
+            >>= Decode.fromString Definition.UrbanDecoder
+
+        match urbanResponse with
+        | Ok defs when defs.Definitions.Length > 0 -> buildDefineOutput term defs |> Some
+        | Ok _ -> None
+        | Error e ->
+            logger.LogDebug $"%s{e}"
+            None
+
     let getDefineOutput (logger: ILogger) term : string option =
         let response =
             getDictionaryResponse term
             >>= Decode.fromString Definition.DictDecoder
-
-        let getUrbanOutput () =
-            let urbanResponse =
-                getUrbanResponse term
-                >>= Decode.fromString Definition.UrbanDecoder
-
-            match urbanResponse with
-            | Ok defs when defs.Definitions.Length > 0 -> buildDefineOutput term defs |> Some
-            | Ok _ -> None
-            | Error e ->
-                logger.LogDebug $"%s{e}"
-                None
 
         match response with
         | Ok defs when defs.Length > 0 ->
@@ -145,14 +145,23 @@ type Commands() =
             |> Some
         | Error e ->
             logger.LogDebug $"%s{e}"
-            getUrbanOutput ()
-        | _ -> getUrbanOutput ()
+            getUrbanOutput logger term
+        | _ -> getUrbanOutput logger term
 
     let define (ctx: CommandContext) (term: string) =
         async {
             do! ctx.TriggerTypingAsync() |> Async.AwaitTask
 
             match getDefineOutput ctx.Client.Logger term with
+            | Some output -> do! ctx.RespondChunked(output)
+            | None -> do! ctx.RespondChunked("No definition found for **" ++ term ++ "**")
+        }
+
+    let urban (ctx: CommandContext) (term: string) =
+        async {
+            do! ctx.TriggerTypingAsync() |> Async.AwaitTask
+
+            match getUrbanOutput ctx.Client.Logger term with
             | Some output -> do! ctx.RespondChunked(output)
             | None -> do! ctx.RespondChunked("No definition found for **" ++ term ++ "**")
         }
@@ -206,9 +215,14 @@ type Commands() =
     member _.RussianRouletteAsync(ctx) =
         russianRoulette ctx |> Async.StartAsTask :> Task
 
-    [<Command("define"); Description("Look up the definition of a word or phrase.")>]
+    [<Command("define");
+      Description("Look up the definition of a word or phrase, using Urban Dictionary as a backup.")>]
     member _.DefineAsync(ctx, [<Description("The word or phrase to look up."); RemainingText>] term) =
         define ctx term |> Async.StartAsTask :> Task
+
+    [<Command("urban"); Description("Look up the definition of a word or phrase on Urban Dictionary.")>]
+    member _.UrbanAsync(ctx, [<Description("The word or phrase to look up."); RemainingText>] term) =
+        urban ctx term |> Async.StartAsTask :> Task
 
     [<Command("add"); Description("Add a response to be randomly selected when the bot replies after being pinged.")>]
     member _.AddResponseAsync(ctx, [<Description("The response to add."); RemainingText>] response) =

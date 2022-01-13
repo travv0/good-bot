@@ -20,7 +20,10 @@ let config =
     | Error e -> failwith e
 
 let mutable db =
-    let defaultDb = { Responses = [ "hi" ]; Status = None }
+    let defaultDb =
+        { Responses = [ "hi" ]
+          Status = None
+          Meanness = 5 }
 
     try
         match

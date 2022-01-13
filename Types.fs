@@ -6,7 +6,8 @@ open Thoth.Json.Net
 
 type Db =
     { Responses: string list
-      Status: (string * ActivityType) option }
+      Status: (string * ActivityType) option
+      Meanness: int }
 
     static member Decoder =
         Decode.object (fun get ->
@@ -15,7 +16,11 @@ type Db =
                 |> get.Required.Field "Responses"
               Status =
                 Decode.tuple2 Decode.string Decode.Enum.int
-                |> get.Optional.Field "Status" })
+                |> get.Optional.Field "Status"
+              Meanness =
+                Decode.int
+                |> get.Optional.Field "Meanness"
+                |> Option.defaultValue 5 })
 
 
 type Config =
