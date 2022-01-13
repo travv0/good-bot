@@ -24,28 +24,26 @@ type Commands() =
             File.WriteAllText(config.DbFile, Encode.Auto.toString (4, newDb)))
 
     let updateStatus (ctx: CommandContext) name activityType =
-        async {
-            do! ctx.TriggerTypingAsync() |> Async.AwaitTask
+        task {
+            do! ctx.TriggerTypingAsync()
 
             let activity =
-                if name = "" then
+                if String.IsNullOrWhiteSpace(name) then
                     DiscordActivity()
                 else
                     DiscordActivity(name, activityType)
 
-            do!
-                ctx.Client.UpdateStatusAsync(activity = activity)
-                |> Async.AwaitTask
+            do! ctx.Client.UpdateStatusAsync(activity = activity)
 
             updateDb
                 { db with
                     Status =
-                        if name = "" then
+                        if String.IsNullOrWhiteSpace(name) then
                             None
                         else
                             Some(name, activityType) }
 
-            if name = "" then
+            if String.IsNullOrWhiteSpace(name) then
                 do! ctx.RespondChunked("Removed status")
             else
                 let activityTypeText =
@@ -57,22 +55,7 @@ type Commands() =
                     | ActivityType.Competing -> "Competing in"
                     | t -> failwithf $"not implemented for %s{string t}"
 
-                do! ctx.RespondChunked $"Updated status to **%s{activityTypeText} %s{name}**"
-        }
-
-    let russianRoulette (ctx: CommandContext) =
-        async {
-            do! ctx.TriggerTypingAsync() |> Async.AwaitTask
-            let rand = Random()
-
-            if rand.Next(6) = 0 then
-                do! ctx.RespondChunked("Bang!")
-
-                do!
-                    ctx.Guild.BanMemberAsync(ctx.Member, 0, "Bang!")
-                    |> Async.AwaitTask
-            else
-                do! ctx.RespondChunked("Click.")
+                do! ctx.RespondChunked($"Updated status to **%s{activityTypeText} %s{name}**")
         }
 
     let buildDefineOutput term (definition: Definition) =
@@ -152,8 +135,8 @@ type Commands() =
         | _ -> getUrbanOutput logger term
 
     let define (ctx: CommandContext) getOutput (term: string) =
-        async {
-            do! ctx.TriggerTypingAsync() |> Async.AwaitTask
+        task {
+            do! ctx.TriggerTypingAsync()
 
             if String.IsNullOrWhiteSpace(term) then
                 do! ctx.RespondChunked("Missing term to define")
@@ -163,121 +146,94 @@ type Commands() =
                 | None -> do! ctx.RespondChunked("No definition found for **" ++ term ++ "**")
         }
 
-    let addResponse (ctx: CommandContext) response =
-        async {
-            do! ctx.TriggerTypingAsync() |> Async.AwaitTask
+    [<Command("rr"); Description("Play Russian Roulette!")>]
+    member _.RussianRouletteAsync(ctx: CommandContext) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
+            let rand = Random()
+
+            if rand.Next(6) = 0 then
+                do! ctx.RespondChunked("Bang!")
+                do! ctx.Guild.BanMemberAsync(ctx.Member, 0, "Bang!")
+            else
+                do! ctx.RespondChunked("Click.")
+        }
+
+    [<Command("define");
+      Description("Look up the definition of a word or phrase, using Urban Dictionary as a backup.")>]
+    member _.DefineAsync(ctx, [<Description("The word or phrase to look up."); RemainingText>] term) : Task =
+        define ctx getDefineOutput term
+
+    [<Command("urban"); Description("Look up the definition of a word or phrase on Urban Dictionary.")>]
+    member _.UrbanAsync(ctx, [<Description("The word or phrase to look up."); RemainingText>] term) : Task =
+        define ctx getUrbanOutput term
+
+    [<Command("add"); Description("Add a response to be randomly selected when the bot replies after being pinged.")>]
+    member _.AddResponseAsync
+        (
+            ctx: CommandContext,
+            [<Description("The response to add."); RemainingText>] response
+        ) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
 
             if String.IsNullOrWhiteSpace(response) then
                 do! ctx.RespondChunked("Missing response to add")
             else
                 updateDb { db with Responses = response :: db.Responses |> distinct }
-                do! ctx.RespondChunked $"Added **%s{response}** to responses"
+                do! ctx.RespondChunked($"Added **%s{response}** to responses")
         }
 
-    let removeResponse (ctx: CommandContext) response =
-        async {
-            do! ctx.TriggerTypingAsync() |> Async.AwaitTask
+    [<Command("remove"); Description("Remove a response from the bot's response pool.")>]
+    member _.RemoveResponseAsync
+        (
+            ctx: CommandContext,
+            [<Description("The response to remove."); RemainingText>] response
+        ) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
 
             if String.IsNullOrWhiteSpace(response) then
                 do! ctx.RespondChunked("Missing response to remove")
             elif not (exists ((=) response) db.Responses) then
-                do! ctx.RespondChunked $"Response **%s{response}** not found"
+                do! ctx.RespondChunked($"Response **%s{response}** not found")
             else
                 updateDb { db with Responses = db.Responses |> filter ((<>) response) }
-                do! ctx.RespondChunked $"Removed **%s{response}** from responses"
+                do! ctx.RespondChunked($"Removed **%s{response}** from responses")
         }
 
-    let listResponses (ctx: CommandContext) =
-        async {
-            do! ctx.TriggerTypingAsync() |> Async.AwaitTask
+    [<Command("list"); Description("List all responses in the response pool.")>]
+    member _.ListResponsesAsync(ctx: CommandContext) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
             do! ctx.RespondChunked(String.Join("\n", db.Responses))
         }
 
-    let playing (ctx: CommandContext) name =
-        async { do! updateStatus ctx name ActivityType.Playing }
-
-    let watching (ctx: CommandContext) name =
-        async { do! updateStatus ctx name ActivityType.Watching }
-
-    let listeningTo (ctx: CommandContext) name =
-        async { do! updateStatus ctx name ActivityType.ListeningTo }
-
-    let competingIn (ctx: CommandContext) name =
-        async { do! updateStatus ctx name ActivityType.Competing }
-
-    let setMeanness (ctx: CommandContext) (meanness: int) =
-        async {
-            do! ctx.TriggerTypingAsync() |> Async.AwaitTask
-            let meanness = meanness |> max 0 |> min 10
-            updateDb { db with Meanness = meanness }
-            do! ctx.RespondChunked $"Set meanness to **%d{meanness}**"
-        }
-
-    [<Command("rr"); Description("Play Russian Roulette!")>]
-    member _.RussianRouletteAsync(ctx) =
-        russianRoulette ctx |> Async.StartAsTask :> Task
-
-    [<Command("define");
-      Description("Look up the definition of a word or phrase, using Urban Dictionary as a backup.")>]
-    member _.DefineAsync(ctx, [<Description("The word or phrase to look up."); RemainingText>] term) =
-        define ctx getDefineOutput term
-        |> Async.StartAsTask
-        :> Task
-
-    [<Command("urban"); Description("Look up the definition of a word or phrase on Urban Dictionary.")>]
-    member _.UrbanAsync(ctx, [<Description("The word or phrase to look up."); RemainingText>] term) =
-        define ctx getUrbanOutput term
-        |> Async.StartAsTask
-        :> Task
-
-    [<Command("add"); Description("Add a response to be randomly selected when the bot replies after being pinged.")>]
-    member _.AddResponseAsync(ctx, [<Description("The response to add."); RemainingText>] response) =
-        addResponse ctx response |> Async.StartAsTask :> Task
-
-    [<Command("remove"); Description("Remove a response from the bot's response pool.")>]
-    member _.RemoveResponseAsync(ctx, [<Description("The response to remove."); RemainingText>] response) =
-        removeResponse ctx response |> Async.StartAsTask :> Task
-
-    [<Command("list"); Description("List all responses in the response pool.")>]
-    member _.ListResponsesAsync(ctx) =
-        listResponses ctx |> Async.StartAsTask :> Task
-
     [<Command("playing"); Description("Set bot's activity to Playing.")>]
-    member _.PlayingAsync(ctx, [<Description("What's the bot playing?"); RemainingText>] name) =
-        playing ctx name |> Async.StartAsTask :> Task
+    member _.PlayingAsync(ctx, [<Description("What's the bot playing?"); RemainingText>] name) : Task =
+        updateStatus ctx name ActivityType.Playing
 
     [<Command("watching"); Description("Set bot's activity to Watching.")>]
-    member _.WatchingAsync(ctx, [<Description("What's the bot watching?"); RemainingText>] name) =
-        watching ctx name |> Async.StartAsTask :> Task
+    member _.WatchingAsync(ctx, [<Description("What's the bot watching?"); RemainingText>] name) : Task =
+        updateStatus ctx name ActivityType.Watching
 
     [<Command("listeningto"); Description("Set bot's activity to Listening To.")>]
-    member _.ListeningToAsync(ctx, [<Description("What's the bot listening to?"); RemainingText>] name) =
-        listeningTo ctx name |> Async.StartAsTask :> Task
+    member _.ListeningToAsync(ctx, [<Description("What's the bot listening to?"); RemainingText>] name) : Task =
+        updateStatus ctx name ActivityType.ListeningTo
 
     [<Command("competingin"); Description("Set bot's activity to Competing In.")>]
-    member _.CompetingInAsync(ctx, [<Description("What's the bot competing in?"); RemainingText>] name) =
-        competingIn ctx name |> Async.StartAsTask :> Task
-
-    [<Command("playing")>]
-    member _.PlayingAsync(ctx) =
-        playing ctx "" |> Async.StartAsTask :> Task
-
-    [<Command("watching")>]
-    member _.WatchingAsync(ctx) =
-        watching ctx "" |> Async.StartAsTask :> Task
-
-    [<Command("listeningto")>]
-    member _.ListeningToAsync(ctx) =
-        listeningTo ctx "" |> Async.StartAsTask :> Task
-
-    [<Command("competingin")>]
-    member _.CompetingInAsync(ctx) =
-        competingIn ctx "" |> Async.StartAsTask :> Task
+    member _.CompetingInAsync(ctx, [<Description("What's the bot competing in?"); RemainingText>] name) : Task =
+        updateStatus ctx name ActivityType.Competing
 
     [<Command("meanness"); Description("Set bot's meanness level from 0 to 10.")>]
     member _.MeannessAsync
         (
-            ctx,
+            ctx: CommandContext,
             [<Description("The number between 0 and 10 to set the bot's meanness to. Higher is meaner.")>] meanness
-        ) =
-        setMeanness ctx meanness |> Async.StartAsTask :> Task
+        ) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
+            let meanness = meanness |> max 0 |> min 10
+            updateDb { db with Meanness = meanness }
+            do! ctx.RespondChunked($"Set meanness to **%d{meanness}**")
+        }
