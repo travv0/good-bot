@@ -38,12 +38,11 @@ module Core =
     let commandErrored (commands: CommandsNextExtension) (e: CommandErrorEventArgs) =
         match e.Exception with
         | :? ArgumentException -> e.Context.RespondAsync $"Invalid arguments for command **%s{e.Command.Name}**" :> Task
-        | :? Exceptions.CommandNotFoundException ->
-            e.Context.RespondAsync $"No command named **%s{e.Command.Name}**" :> Task
-        | _ ->
+        | :? Exceptions.CommandNotFoundException as exn ->
+            e.Context.RespondAsync $"No command named **%s{exn.CommandName}**" :> Task
+        | exn ->
             commands.Client.Logger.LogError
-                $"Command error: %s{e.Command.Name}:\
-                %s{e.Exception.GetType().Name}: %s{e.Exception.Message}"
+                $"Command error: %s{e.Command.Name}: %s{exn.GetType().Name}: %s{exn.Message}"
 
             Task.CompletedTask
 
@@ -77,7 +76,7 @@ module Core =
     discord.add_TypingStarted (AsyncEventHandler<_, _>(typingStart))
 
     let commandConfig =
-        CommandsNextConfiguration(StringPrefixes = [ config.CommandPrefix ])
+        CommandsNextConfiguration(StringPrefixes = [ config.CommandPrefix ], EnableMentionPrefix = false)
 
     let commands = discord.UseCommandsNext(commandConfig)
     commands.add_CommandErrored (AsyncEventHandler<_, _>(commandErrored))

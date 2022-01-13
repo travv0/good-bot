@@ -150,29 +150,23 @@ type Commands() =
             getUrbanOutput logger term
         | _ -> getUrbanOutput logger term
 
-    let define (ctx: CommandContext) (term: string) =
+    let define (ctx: CommandContext) getOutput (term: string) =
         async {
             do! ctx.TriggerTypingAsync() |> Async.AwaitTask
 
-            match getDefineOutput ctx.Client.Logger term with
-            | Some output -> do! ctx.RespondChunked(output)
-            | None -> do! ctx.RespondChunked("No definition found for **" ++ term ++ "**")
-        }
-
-    let urban (ctx: CommandContext) (term: string) =
-        async {
-            do! ctx.TriggerTypingAsync() |> Async.AwaitTask
-
-            match getUrbanOutput ctx.Client.Logger term with
-            | Some output -> do! ctx.RespondChunked(output)
-            | None -> do! ctx.RespondChunked("No definition found for **" ++ term ++ "**")
+            if String.IsNullOrWhiteSpace(term) then
+                do! ctx.RespondChunked("Missing term to define")
+            else
+                match getOutput ctx.Client.Logger term with
+                | Some output -> do! ctx.RespondChunked(output)
+                | None -> do! ctx.RespondChunked("No definition found for **" ++ term ++ "**")
         }
 
     let addResponse (ctx: CommandContext) response =
         async {
             do! ctx.TriggerTypingAsync() |> Async.AwaitTask
 
-            if response = "" then
+            if String.IsNullOrWhiteSpace(response) then
                 do! ctx.RespondChunked("Missing response to add")
             else
                 updateDb { db with Responses = response :: db.Responses |> distinct }
@@ -183,7 +177,7 @@ type Commands() =
         async {
             do! ctx.TriggerTypingAsync() |> Async.AwaitTask
 
-            if response = "" then
+            if String.IsNullOrWhiteSpace(response) then
                 do! ctx.RespondChunked("Missing response to remove")
             elif not (exists ((=) response) db.Responses) then
                 do! ctx.RespondChunked $"Response **%s{response}** not found"
@@ -225,11 +219,15 @@ type Commands() =
     [<Command("define");
       Description("Look up the definition of a word or phrase, using Urban Dictionary as a backup.")>]
     member _.DefineAsync(ctx, [<Description("The word or phrase to look up."); RemainingText>] term) =
-        define ctx term |> Async.StartAsTask :> Task
+        define ctx getDefineOutput term
+        |> Async.StartAsTask
+        :> Task
 
     [<Command("urban"); Description("Look up the definition of a word or phrase on Urban Dictionary.")>]
     member _.UrbanAsync(ctx, [<Description("The word or phrase to look up."); RemainingText>] term) =
-        urban ctx term |> Async.StartAsTask :> Task
+        define ctx getUrbanOutput term
+        |> Async.StartAsTask
+        :> Task
 
     [<Command("add"); Description("Add a response to be randomly selected when the bot replies after being pinged.")>]
     member _.AddResponseAsync(ctx, [<Description("The response to add."); RemainingText>] response) =
