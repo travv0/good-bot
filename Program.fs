@@ -60,7 +60,7 @@ module Core =
             Task.CompletedTask
 
     let typingStart (dis: DiscordClient) (e: TypingStartEventArgs) =
-        if rand.Next(1000) = 0 then
+        if rand.Next(5000 / db.Meanness) = 0 then
             dis.SendMessageAsync(e.Channel, $"shut up <@%u{e.User.Id}>") :> Task
         else
             Task.CompletedTask

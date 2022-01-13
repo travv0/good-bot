@@ -18,6 +18,11 @@ open Types
 type Commands() =
     inherit BaseCommandModule()
 
+    let updateDb newDb =
+        lock db (fun () ->
+            db <- newDb
+            File.WriteAllText(config.DbFile, Encode.Auto.toString (4, newDb)))
+
     let updateStatus (ctx: CommandContext) name activityType =
         async {
             do! ctx.TriggerTypingAsync() |> Async.AwaitTask
@@ -32,16 +37,13 @@ type Commands() =
                 ctx.Client.UpdateStatusAsync(activity = activity)
                 |> Async.AwaitTask
 
-            lock db (fun () ->
-                db <-
-                    { db with
-                        Status =
-                            if name = "" then
-                                None
-                            else
-                                Some(name, activityType) }
-
-                File.WriteAllText(config.DbFile, Encode.Auto.toString (4, db)))
+            updateDb
+                { db with
+                    Status =
+                        if name = "" then
+                            None
+                        else
+                            Some(name, activityType) }
 
             if name = "" then
                 do! ctx.RespondChunked("Removed status")
@@ -173,10 +175,7 @@ type Commands() =
             if response = "" then
                 do! ctx.RespondChunked("Missing response to add")
             else
-                lock db (fun () ->
-                    db <- { db with Responses = response :: db.Responses |> distinct }
-                    File.WriteAllText(config.DbFile, Encode.Auto.toString (4, db)))
-
+                updateDb { db with Responses = response :: db.Responses |> distinct }
                 do! ctx.RespondChunked $"Added **%s{response}** to responses"
         }
 
@@ -189,10 +188,7 @@ type Commands() =
             elif not (exists ((=) response) db.Responses) then
                 do! ctx.RespondChunked $"Response **%s{response}** not found"
             else
-                lock db (fun () ->
-                    db <- { db with Responses = db.Responses |> filter ((<>) response) }
-                    File.WriteAllText(config.DbFile, Encode.Auto.toString (4, db)))
-
+                updateDb { db with Responses = db.Responses |> filter ((<>) response) }
                 do! ctx.RespondChunked $"Removed **%s{response}** from responses"
         }
 
@@ -210,6 +206,17 @@ type Commands() =
 
     let listeningTo (ctx: CommandContext) name =
         async { do! updateStatus ctx name ActivityType.ListeningTo }
+
+    let competingIn (ctx: CommandContext) name =
+        async { do! updateStatus ctx name ActivityType.Competing }
+
+    let setMeanness (ctx: CommandContext) (meanness: int) =
+        async {
+            do! ctx.TriggerTypingAsync() |> Async.AwaitTask
+            let meanness = meanness |> max 0 |> min 10
+            updateDb { db with Meanness = meanness }
+            do! ctx.RespondChunked $"Set meanness to **%d{meanness}**"
+        }
 
     [<Command("rr"); Description("Play Russian Roulette!")>]
     member _.RussianRouletteAsync(ctx) =
@@ -248,6 +255,10 @@ type Commands() =
     member _.ListeningToAsync(ctx, [<Description("What's the bot listening to?"); RemainingText>] name) =
         listeningTo ctx name |> Async.StartAsTask :> Task
 
+    [<Command("competingin"); Description("Set bot's activity to Competing In.")>]
+    member _.CompetingInAsync(ctx, [<Description("What's the bot competing in?"); RemainingText>] name) =
+        competingIn ctx name |> Async.StartAsTask :> Task
+
     [<Command("playing")>]
     member _.PlayingAsync(ctx) =
         playing ctx "" |> Async.StartAsTask :> Task
@@ -259,3 +270,15 @@ type Commands() =
     [<Command("listeningto")>]
     member _.ListeningToAsync(ctx) =
         listeningTo ctx "" |> Async.StartAsTask :> Task
+
+    [<Command("competingin")>]
+    member _.CompetingInAsync(ctx) =
+        competingIn ctx "" |> Async.StartAsTask :> Task
+
+    [<Command("meanness"); Description("Set bot's meanness level from 0 to 10.")>]
+    member _.MeannessAsync
+        (
+            ctx,
+            [<Description("The number between 0 and 10 to set the bot's meanness to. Higher is meaner.")>] meanness
+        ) =
+        setMeanness ctx meanness |> Async.StartAsTask :> Task
