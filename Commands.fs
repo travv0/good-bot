@@ -237,3 +237,10 @@ type Commands() =
             updateDb { db with Meanness = meanness }
             do! ctx.RespondChunked($"Set meanness to **%d{meanness}**")
         }
+
+    [<Command("meanness"); Description("View current meanness.")>]
+    member _.MeannessAsync(ctx: CommandContext) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
+            do! ctx.RespondChunked($"Current meanness is **%d{db.Meanness}**")
+        }
