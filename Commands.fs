@@ -233,7 +233,7 @@ type Commands() =
         ) : Task =
         task {
             do! ctx.TriggerTypingAsync()
-            let meanness = meanness |> max 0 |> min 10
+            let meanness = meanness |> max 0 |> min 11
             updateDb { db with Meanness = meanness }
             do! ctx.RespondChunked($"Set meanness to **%d{meanness}**")
         }
