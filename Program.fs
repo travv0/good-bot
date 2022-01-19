@@ -38,8 +38,7 @@ module Core =
     let commandErrored (commands: CommandsNextExtension) (e: CommandErrorEventArgs) =
         match e.Exception with
         | :? ArgumentException -> e.Context.RespondAsync $"Invalid arguments for command **%s{e.Command.Name}**" :> Task
-        | :? Exceptions.CommandNotFoundException as exn ->
-            e.Context.RespondAsync $"No command named **%s{exn.CommandName}**" :> Task
+        | :? Exceptions.CommandNotFoundException -> Task.CompletedTask
         | exn ->
             commands.Client.Logger.LogError
                 $"Command error: %s{e.Command.Name}: %s{exn.GetType().Name}: %s{exn.Message}"
