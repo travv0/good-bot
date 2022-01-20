@@ -229,11 +229,11 @@ type Commands() =
     member _.MeannessAsync
         (
             ctx: CommandContext,
-            [<Description("The number between 0 and 10 to set the bot's meanness to. Higher is meaner.")>] meanness
+            [<Description("The number between 0 and 10 to set the bot's meanness to. Higher is meaner.")>] level
         ) : Task =
         task {
             do! ctx.TriggerTypingAsync()
-            let meanness = meanness |> max 0 |> min 11
+            let meanness = level |> max 0 |> min 11
             updateDb { db with Meanness = meanness }
             do! ctx.RespondChunked($"Set meanness to **%d{meanness}**")
         }
