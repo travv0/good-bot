@@ -225,7 +225,7 @@ type Commands() =
     member _.CompetingInAsync(ctx, [<Description("What's the bot competing in?"); RemainingText>] name) : Task =
         updateStatus ctx name ActivityType.Competing
 
-    [<Command("meanness"); Description("Set bot's meanness level from 0 to 10.")>]
+    [<Command("meanness"); Description("Set bot's meanness level from 0 to 10 or view current meanness.")>]
     member _.MeannessAsync
         (
             ctx: CommandContext,
@@ -238,7 +238,7 @@ type Commands() =
             do! ctx.RespondChunked($"Set meanness to **%d{meanness}**")
         }
 
-    [<Command("meanness"); Description("View current meanness.")>]
+    [<Command("meanness")>]
     member _.MeannessAsync(ctx: CommandContext) : Task =
         task {
             do! ctx.TriggerTypingAsync()
