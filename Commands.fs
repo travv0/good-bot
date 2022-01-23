@@ -5,7 +5,6 @@ open DSharpPlus.CommandsNext.Attributes
 open DSharpPlus.Entities
 open Data
 open Extensions
-open FSharpPlus
 open FsHttp
 open FsHttp.DslCE
 open Microsoft.Extensions.Logging
@@ -63,17 +62,17 @@ type Commands() =
             match definition.Definitions with
             | [| def |] -> def
             | defs ->
-                mapi (fun i def -> (i + 1).ToString() ++ ". " ++ def) defs
-                |> intercalate "\n\n"
+                Array.mapi (fun i def -> (i + 1).ToString() + ". " + def) defs
+                |> (fun a -> String.Join("\n\n", a))
 
         "**"
-        ++ term
-        ++ "**"
-        ++ (match definition.PartOfSpeech with
-            | Some partOfSpeech -> " *" ++ partOfSpeech ++ "*"
-            | None -> "")
-        ++ "\n"
-        ++ definitions
+        + term
+        + "**"
+        + (match definition.PartOfSpeech with
+           | Some partOfSpeech -> " *" + partOfSpeech + "*"
+           | None -> "")
+        + "\n"
+        + definitions
 
     let getDictionaryResponse term =
         match config.DictKey with
@@ -82,9 +81,9 @@ type Commands() =
             http {
                 GET(
                     "https://dictionaryapi.com/api/v3/references/collegiate/json/"
-                    ++ term
-                    ++ "?key="
-                    ++ apiKey
+                    + term
+                    + "?key="
+                    + apiKey
                 )
             }
             |> Response.toText
@@ -97,7 +96,7 @@ type Commands() =
             http {
                 GET(
                     "https://mashape-community-urban-dictionary.p.rapidapi.com/define?term="
-                    ++ term
+                    + term
                 )
 
                 Header "x-rapidapi-key" apiKey
@@ -110,7 +109,7 @@ type Commands() =
     let getUrbanOutput (logger: ILogger) term =
         let urbanResponse =
             getUrbanResponse term
-            >>= Decode.fromString Definition.UrbanDecoder
+            |> Result.bind (Decode.fromString Definition.UrbanDecoder)
 
         match urbanResponse with
         | Ok defs when defs.Definitions.Length > 0 -> buildDefineOutput term defs |> Some
@@ -122,12 +121,12 @@ type Commands() =
     let getDefineOutput (logger: ILogger) term : string option =
         let response =
             getDictionaryResponse term
-            >>= Decode.fromString Definition.DictDecoder
+            |> Result.bind (Decode.fromString Definition.DictDecoder)
 
         match response with
         | Ok defs when defs.Length > 0 ->
-            map (buildDefineOutput term) defs
-            |> intercalate "\n\n"
+            Array.map (buildDefineOutput term) defs
+            |> (fun a -> String.Join("\n\n", a))
             |> Some
         | Error e ->
             logger.LogDebug $"%s{e}"
@@ -143,7 +142,7 @@ type Commands() =
             else
                 match getOutput ctx.Client.Logger term with
                 | Some output -> do! ctx.RespondChunked(output)
-                | None -> do! ctx.RespondChunked("No definition found for **" ++ term ++ "**")
+                | None -> do! ctx.RespondChunked("No definition found for **" + term + "**")
         }
 
     [<Command("rr"); Description("Play Russian Roulette!")>]
@@ -180,7 +179,7 @@ type Commands() =
             if String.IsNullOrWhiteSpace(response) then
                 do! ctx.RespondChunked("Missing response to add")
             else
-                updateDb { db with Responses = response :: db.Responses |> distinct }
+                updateDb { db with Responses = response :: db.Responses |> List.distinct }
                 do! ctx.RespondChunked($"Added **%s{response}** to responses")
         }
 
@@ -195,10 +194,10 @@ type Commands() =
 
             if String.IsNullOrWhiteSpace(response) then
                 do! ctx.RespondChunked("Missing response to remove")
-            elif not (exists ((=) response) db.Responses) then
+            elif not (List.contains response db.Responses) then
                 do! ctx.RespondChunked($"Response **%s{response}** not found")
             else
-                updateDb { db with Responses = db.Responses |> filter ((<>) response) }
+                updateDb { db with Responses = db.Responses |> List.filter ((<>) response) }
                 do! ctx.RespondChunked($"Removed **%s{response}** from responses")
         }
 

@@ -5,7 +5,6 @@ open DSharpPlus.EventArgs
 open Data
 open Emzi0767.Utilities
 open Extensions
-open FSharpPlus
 open GoodBot
 open Microsoft.Extensions.Logging
 open System
@@ -47,7 +46,7 @@ module Core =
 
     let messageCreated (dis: DiscordClient) (e: MessageCreateEventArgs) =
         if not e.Author.IsBot
-           && (exists ((=) dis.CurrentUser) e.MentionedUsers
+           && (Seq.contains dis.CurrentUser e.MentionedUsers
                || e.Message.Content.Contains("@everyone")
                || e.Message.Content.Contains("@here")) then
             let responseNum = rand.Next(db.Responses.Length)

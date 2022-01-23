@@ -1,7 +1,6 @@
 module Types
 
 open DSharpPlus.Entities
-open FSharpPlus
 open Thoth.Json.Net
 
 type Db =
