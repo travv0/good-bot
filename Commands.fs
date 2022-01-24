@@ -63,7 +63,7 @@ type Commands() =
             | [| def |] -> def
             | defs ->
                 Array.mapi (fun i def -> (i + 1).ToString() + ". " + def) defs
-                |> (fun a -> String.Join("\n\n", a))
+                |> String.join "\n\n"
 
         "**"
         + term
@@ -126,7 +126,7 @@ type Commands() =
         match response with
         | Ok defs when defs.Length > 0 ->
             Array.map (buildDefineOutput term) defs
-            |> (fun a -> String.Join("\n\n", a))
+            |> String.join "\n\n"
             |> Some
         | Error e ->
             logger.LogDebug $"%s{e}"
@@ -205,7 +205,7 @@ type Commands() =
     member _.ListResponsesAsync(ctx: CommandContext) : Task =
         task {
             do! ctx.TriggerTypingAsync()
-            do! ctx.RespondChunked(String.Join("\n", db.Responses))
+            do! ctx.RespondChunked(String.join "\n" db.Responses)
         }
 
     [<Command("playing"); Description("Set bot's activity to Playing.")>]

@@ -15,3 +15,6 @@ type CommandContext with
 
 type DiscordUser with
     member user.IsCarl = user.Id = 235148962103951360UL
+
+module String =
+    let join (s: string) (strs: seq<string>) = String.Join(s, strs)
