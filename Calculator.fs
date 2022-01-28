@@ -25,10 +25,12 @@ module Internal =
         | Tanh
         | Abs
         | Neg
+        | Fact
 
     type SuffixOp =
         | Percent
         | Factorial
+        | DoubleFactorial
 
     type Expr =
         | Binary of Expr * BinaryOp * Expr
@@ -67,12 +69,14 @@ module Internal =
                      stringReturn "cos" Cos
                      stringReturn "tan" Tan
                      stringReturn "abs" Abs
-                     charReturn '-' Neg ]
+                     charReturn '-' Neg
+                     stringReturn "fact" Fact ]
         .>> spaces
 
     let suffixOp: Parser<SuffixOp> =
         spaces
         >>. choice [ charReturn '%' Percent
+                     stringReturn "!!" DoubleFactorial
                      charReturn '!' Factorial ]
         .>> spaces
 
@@ -138,6 +142,16 @@ module Internal =
 
     open MathNet.Numerics
 
+    let factorial n = SpecialFunctions.Gamma(n + 1.)
+
+    let doubleFactorial n =
+        let k = n / 2.
+
+        factorial k
+        * 2. ** k
+        * (Math.PI / 2.)
+          ** (1. / 4. * (-1. + cos (n * Math.PI)))
+
     let rec reduceExpr: Expr -> float =
         function
         | Val v -> v
@@ -159,9 +173,11 @@ module Internal =
         | Prefix (Tanh, e) -> tanh (reduceExpr e)
         | Prefix (Abs, e) -> abs (reduceExpr e)
         | Prefix (Neg, e) -> -(reduceExpr e)
+        | Prefix (Fact, e) -> factorial (reduceExpr e)
 
         | Suffix (e, Percent) -> (reduceExpr e) * 0.01
-        | Suffix (e, Factorial) -> SpecialFunctions.Gamma(reduceExpr e + 1.)
+        | Suffix (e, Factorial) -> factorial (reduceExpr e)
+        | Suffix (e, DoubleFactorial) -> doubleFactorial (reduceExpr e)
 
     let parseExpr: Parser<Expr> = expr None .>> eof
 
