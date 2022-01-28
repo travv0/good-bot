@@ -26,22 +26,23 @@ module private Internal =
 
     let calcVal: Parser<CalcExpr> = spaces >>. pfloat .>> spaces |>> CalcVal
 
-    let private single, singleRef = createParserForwardedToRef ()
+    let single, singleRef = createParserForwardedToRef ()
 
     let rec expr: option<CalcExpr> -> Parser<CalcExpr> =
         function
         | None ->
-            single
-            >>= (fun first -> attempt (expr (Some first) <|> preturn first))
+            parse {
+                let! first = single
+                return! expr (Some first) <|> preturn first
+            }
         | Some prev ->
-            choice [ choice [ attempt (
-                                  calcOp
-                                  >>= fun op ->
-                                          single
-                                          >>= fun second -> expr (Some(CalcExpr(prev, op, second)))
-                              )
-                              attempt (single) ]
-                     preturn prev ]
+            parse {
+                let! op = calcOp
+                let! second = single
+                return! expr (Some(CalcExpr(prev, op, second)))
+            }
+            <|> single
+            <|> preturn prev
 
     let calcParenExpr prev : Parser<CalcExpr> =
         between (pchar '(') (pchar ')') (spaces >>. expr prev .>> spaces)
@@ -71,4 +72,4 @@ open FParsec.CharParsers
 let eval s : Result<float, string> =
     match run Internal.calcExpr s with
     | Success (e, _, _) -> Ok(Internal.reduceExpr e)
-    | Failure (e, _, _) -> Error(e)
+    | Failure (e, _, _) -> Error e
