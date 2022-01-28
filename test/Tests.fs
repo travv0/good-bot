@@ -16,6 +16,7 @@ let unwrapError =
 [<Fact>]
 let ``calc evals correctly`` () =
     Assert.InRange(Calculator.eval "9 * 18%" |> unwrapOk, 1.62 - 0.01, 1.62 + 0.01)
+    Assert.InRange(Calculator.eval "18%" |> unwrapOk, 0.18 - 0.001, 0.18 + 0.001)
     Assert.Equal(12., Calculator.eval "3 * sqrt(2 ^ 4)" |> unwrapOk)
 
     Assert.InRange(
@@ -89,4 +90,14 @@ Note: The error occurred at the end of the input stream.
 Expecting: '!', '%', ')', '*', '+', '-', '/' or '^'
 ",
         Calculator.eval "(1" |> unwrapError
+    )
+
+    Assert.Equal(
+        "Error in Ln: 1 Col: 5
+(1+2
+    ^
+Note: The error occurred at the end of the input stream.
+Expecting: '!', '%', ')', '*', '+', '-', '/' or '^'
+",
+        Calculator.eval "(1+2" |> unwrapError
     )

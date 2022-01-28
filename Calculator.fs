@@ -76,14 +76,13 @@ module Internal =
                      charReturn '!' Factorial ]
         .>> spaces
 
-    let valExpr: Parser<Expr> =
+    let value: Parser<Expr> =
         spaces
         >>. choice [ charReturn 'e' Math.E
                      stringReturn "pi" Math.PI
                      pfloat ]
         |>> Val
         .>> spaces
-
 
     let prefixExpr expr : Parser<Expr> =
         spaces
@@ -93,18 +92,19 @@ module Internal =
     let parenExpr expr lhs : Parser<Expr> =
         between (pchar '(') (pchar ')') (spaces >>. expr lhs .>> spaces)
 
-    let suffixExpr expr : Parser<Expr> =
+    let valExpr expr : Parser<Expr> =
         attempt
         <| parse {
-            let! lhs = valExpr <|> parenExpr expr None
-            let! op = lookAhead suffixOp
-            return! suffixOp >>. expr (Some(Suffix(lhs, op)))
+            let! v = value <|> parenExpr expr None
+
+            match! opt suffixOp with
+            | Some op -> return! expr (Some(Suffix(v, op)))
+            | None -> return v
            }
 
     let single expr =
         spaces
-        >>. (suffixExpr expr
-             <|> valExpr
+        >>. (valExpr expr
              <|> prefixExpr expr
              <|> parenExpr expr None)
         .>> spaces
