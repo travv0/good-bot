@@ -8,12 +8,14 @@
     <Compile Include="Extensions.fs" />
     <Compile Include="Types.fs" />
     <Compile Include="Data.fs" />
+    <Compile Include="Calculator.fs" />
     <Compile Include="Commands.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="DSharpPlus" Version="4.1.0" />
     <PackageReference Include="DSharpPlus.CommandsNext" Version="4.1.0" />
+    <PackageReference Include="FParsec" Version="1.1.1" />
     <PackageReference Include="SchlenkR.FsHttp" Version="5.0.0" />
     <PackageReference Include="Thoth.Json.Net" Version="5.0.0" />
   </ItemGroup>

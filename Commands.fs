@@ -5,6 +5,7 @@ open DSharpPlus.CommandsNext.Attributes
 open DSharpPlus.Entities
 open Data
 open Extensions
+open FParsec.CharParsers
 open FsHttp
 open FsHttp.DslCE
 open Microsoft.Extensions.Logging
@@ -242,4 +243,14 @@ type Commands() =
         task {
             do! ctx.TriggerTypingAsync()
             do! ctx.RespondChunked($"Current meanness is **%d{db.Meanness}**")
+        }
+
+    [<Command("calc")>]
+    member _.CalcAsync(ctx: CommandContext, [<RemainingText; Description("The expression to evaluate.")>] expr) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
+
+            match Calculator.eval expr with
+            | Ok f -> do! ctx.RespondChunked(f.ToString("0.###########################"))
+            | Error e -> do! ctx.RespondChunked($"```\n%s{e}\n```")
         }

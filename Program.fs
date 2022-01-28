@@ -97,4 +97,4 @@ let main _ =
     |> Async.AwaitTask
     |> Async.RunSynchronously
 
-    0 // return an integer exit code
+    0
