@@ -94,17 +94,20 @@ module Internal =
         between (pchar '(') (pchar ')') (spaces >>. expr lhs .>> spaces)
 
     let suffixExpr expr : Parser<Expr> =
-        parse {
-            let! lhs = attempt (valExpr <|> parenExpr expr None)
-            let! op = attempt (lookAhead suffixOp)
+        attempt
+        <| parse {
+            let! lhs = valExpr <|> parenExpr expr None
+            let! op = lookAhead suffixOp
             return! suffixOp >>. expr (Some(Suffix(lhs, op)))
-        }
+           }
 
     let single expr =
-        attempt (suffixExpr expr)
-        <|> valExpr
-        <|> prefixExpr expr
-        <|> parenExpr expr None
+        spaces
+        >>. (suffixExpr expr
+             <|> valExpr
+             <|> prefixExpr expr
+             <|> parenExpr expr None)
+        .>> spaces
 
     let binaryExpr expr lhs =
         parse {
