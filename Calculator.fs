@@ -90,15 +90,19 @@ module Internal =
         >>. pipe2 prefixOp (expr None) (fun op v -> Prefix(op, v))
         .>> spaces
 
-    let suffixExpr expr lhs : Parser<Expr> =
-        attempt suffixOp
-        >>= fun op -> expr (Some(Suffix(lhs, op)))
-
     let parenExpr expr lhs : Parser<Expr> =
         between (pchar '(') (pchar ')') (spaces >>. expr lhs .>> spaces)
 
+    let suffixExpr expr : Parser<Expr> =
+        parse {
+            let! lhs = attempt (valExpr <|> parenExpr expr None)
+            let! op = attempt (lookAhead suffixOp)
+            return! suffixOp >>. expr (Some(Suffix(lhs, op)))
+        }
+
     let single expr =
-        valExpr
+        attempt (suffixExpr expr)
+        <|> valExpr
         <|> prefixExpr expr
         <|> parenExpr expr None
 
@@ -127,10 +131,7 @@ module Internal =
                 let! lhs = single expr
                 return! expr (Some lhs) <|> preturn lhs
             }
-        | Some lhs ->
-            choice [ suffixExpr expr lhs
-                     binaryExpr expr lhs
-                     preturn lhs ]
+        | Some lhs -> binaryExpr expr lhs <|> preturn lhs
 
     open MathNet.Numerics
 
