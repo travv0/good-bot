@@ -46,8 +46,9 @@ let ``calc show helpful parse errors`` () =
 1 +
    ^
 Note: The error occurred at the end of the input stream.
-Expecting: floating-point number, '(', '-', 'abs', 'cos', 'cosh', 'e', 'fact',
-'ln', 'log', 'pi', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
+Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
+'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'randf',
+'randi', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
 ",
         Calculator.eval "1 +" |> unwrapError
     )
@@ -56,8 +57,9 @@ Expecting: floating-point number, '(', '-', 'abs', 'cos', 'cosh', 'e', 'fact',
         "Error in Ln: 1 Col: 1
 +
 ^
-Expecting: floating-point number, '(', '-', 'abs', 'cos', 'cosh', 'e', 'fact',
-'ln', 'log', 'pi', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
+Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
+'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'randf',
+'randi', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
 ",
         Calculator.eval "+" |> unwrapError
     )
@@ -66,8 +68,9 @@ Expecting: floating-point number, '(', '-', 'abs', 'cos', 'cosh', 'e', 'fact',
         "Error in Ln: 1 Col: 2
  +
  ^
-Expecting: floating-point number, '(', '-', 'abs', 'cos', 'cosh', 'e', 'fact',
-'ln', 'log', 'pi', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
+Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
+'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'randf',
+'randi', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
 ",
         Calculator.eval " +" |> unwrapError
     )
@@ -76,8 +79,9 @@ Expecting: floating-point number, '(', '-', 'abs', 'cos', 'cosh', 'e', 'fact',
         "Error in Ln: 1 Col: 2
  + \r\n \
  ^
-Expecting: floating-point number, '(', '-', 'abs', 'cos', 'cosh', 'e', 'fact',
-'ln', 'log', 'pi', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
+Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
+'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'randf',
+'randi', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
 ",
         Calculator.eval " + " |> unwrapError
     )
@@ -87,7 +91,7 @@ Expecting: floating-point number, '(', '-', 'abs', 'cos', 'cosh', 'e', 'fact',
 (1
   ^
 Note: The error occurred at the end of the input stream.
-Expecting: '!', '!!', '%', ')', '*', '+', '-', '/' or '^'
+Expecting: '!', '!!', '%', ')', '*', '+', '-', '/', '^' or 'mod'
 ",
         Calculator.eval "(1" |> unwrapError
     )
@@ -97,7 +101,7 @@ Expecting: '!', '!!', '%', ')', '*', '+', '-', '/' or '^'
 (1+2
     ^
 Note: The error occurred at the end of the input stream.
-Expecting: '!', '!!', '%', ')', '*', '+', '-', '/' or '^'
+Expecting: '!', '!!', '%', ')', '*', '+', '-', '/', '^' or 'mod'
 ",
         Calculator.eval "(1+2" |> unwrapError
     )
