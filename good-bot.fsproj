@@ -16,6 +16,7 @@
     <PackageReference Include="DSharpPlus" Version="4.1.0" />
     <PackageReference Include="DSharpPlus.CommandsNext" Version="4.1.0" />
     <PackageReference Include="FParsec" Version="1.1.1" />
+    <PackageReference Include="MathNet.Numerics" Version="4.15.0" />
     <PackageReference Include="SchlenkR.FsHttp" Version="5.0.0" />
     <PackageReference Include="Thoth.Json.Net" Version="5.0.0" />
   </ItemGroup>

@@ -1,6 +1,8 @@
 [<RequireQualifiedAccess>]
 module Calculator
 
+open System
+
 module Internal =
     open FParsec
 
@@ -14,8 +16,19 @@ module Internal =
     type PrefixOp =
         | Sqrt
         | Log
+        | Ln
+        | Sin
+        | Cos
+        | Tan
+        | Sinh
+        | Cosh
+        | Tanh
+        | Abs
+        | Neg
 
-    type SuffixOp = | Percent
+    type SuffixOp =
+        | Percent
+        | Factorial
 
     type Expr =
         | Binary of Expr * BinaryOp * Expr
@@ -45,14 +58,32 @@ module Internal =
     let prefixOp: Parser<PrefixOp> =
         spaces
         >>. choice [ stringReturn "sqrt" Sqrt
-                     stringReturn "log" Log ]
+                     stringReturn "log" Log
+                     stringReturn "ln" Ln
+                     stringReturn "sinh" Sinh
+                     stringReturn "cosh" Cosh
+                     stringReturn "tanh" Tanh
+                     stringReturn "sin" Sin
+                     stringReturn "cos" Cos
+                     stringReturn "tan" Tan
+                     stringReturn "abs" Abs
+                     charReturn '-' Neg ]
         .>> spaces
 
     let suffixOp: Parser<SuffixOp> =
-        spaces >>. choice [ charReturn '%' Percent ]
+        spaces
+        >>. choice [ charReturn '%' Percent
+                     charReturn '!' Factorial ]
         .>> spaces
 
-    let value: Parser<Expr> = spaces >>. pfloat .>> spaces |>> Val
+    let valExpr: Parser<Expr> =
+        spaces
+        >>. choice [ charReturn 'e' Math.E
+                     stringReturn "pi" Math.PI
+                     pfloat ]
+        |>> Val
+        .>> spaces
+
 
     let prefixExpr expr : Parser<Expr> =
         spaces
@@ -67,7 +98,9 @@ module Internal =
         between (pchar '(') (pchar ')') (spaces >>. expr lhs .>> spaces)
 
     let single expr =
-        value <|> prefixExpr expr <|> parenExpr expr None
+        valExpr
+        <|> prefixExpr expr
+        <|> parenExpr expr None
 
     let binaryExpr expr lhs =
         parse {
@@ -100,29 +133,32 @@ module Internal =
                      single expr
                      preturn lhs ]
 
+    open MathNet.Numerics
+
     let rec reduceExpr: Expr -> float =
         function
         | Val v -> v
+
         | Binary (e1, Plus, e2) -> reduceExpr e1 + reduceExpr e2
         | Binary (e1, Minus, e2) -> reduceExpr e1 - reduceExpr e2
         | Binary (e1, Times, e2) -> reduceExpr e1 * reduceExpr e2
         | Binary (e1, Divide, e2) -> reduceExpr e1 / reduceExpr e2
         | Binary (e1, Exponent, e2) -> reduceExpr e1 ** reduceExpr e2
-        | Prefix (Sqrt, e) -> sqrt (reduceExpr e)
-        | Prefix (Log, e) -> log (reduceExpr e)
-        | Suffix (e, Percent) -> (reduceExpr e) * 0.01
 
-    let rec exprStr: Expr -> string =
-        function
-        | Val v -> string v
-        | Binary (e1, Plus, e2) -> sprintf "(%s + %s)" (exprStr e1) (exprStr e2)
-        | Binary (e1, Minus, e2) -> sprintf "(%s - %s)" (exprStr e1) (exprStr e2)
-        | Binary (e1, Times, e2) -> sprintf "(%s * %s)" (exprStr e1) (exprStr e2)
-        | Binary (e1, Divide, e2) -> sprintf "(%s / %s)" (exprStr e1) (exprStr e2)
-        | Binary (e1, Exponent, e2) -> sprintf "(%s ^ %s)" (exprStr e1) (exprStr e2)
-        | Prefix (Sqrt, e) -> sprintf "sqrt %s" (exprStr e)
-        | Prefix (Log, e) -> sprintf "log %s" (exprStr e)
-        | Suffix (e, Percent) -> sprintf "%s%%" (exprStr e)
+        | Prefix (Sqrt, e) -> sqrt (reduceExpr e)
+        | Prefix (Log, e) -> log10 (reduceExpr e)
+        | Prefix (Ln, e) -> log (reduceExpr e)
+        | Prefix (Sin, e) -> sin (Math.PI / 180. * reduceExpr e)
+        | Prefix (Cos, e) -> cos (Math.PI / 180. * reduceExpr e)
+        | Prefix (Tan, e) -> tan (Math.PI / 180. * reduceExpr e)
+        | Prefix (Sinh, e) -> sinh (reduceExpr e)
+        | Prefix (Cosh, e) -> cosh (reduceExpr e)
+        | Prefix (Tanh, e) -> tanh (reduceExpr e)
+        | Prefix (Abs, e) -> abs (reduceExpr e)
+        | Prefix (Neg, e) -> -(reduceExpr e)
+
+        | Suffix (e, Percent) -> (reduceExpr e) * 0.01
+        | Suffix (e, Factorial) -> SpecialFunctions.Gamma(reduceExpr e + 1.)
 
     let parseExpr: Parser<Expr> = expr None .>> eof
 
