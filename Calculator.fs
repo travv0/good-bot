@@ -15,6 +15,7 @@ module Internal =
 
     type PrefixOp =
         | Sqrt
+        | Cbrt
         | Log
         | Ln
         | Sin
@@ -60,6 +61,7 @@ module Internal =
     let prefixOp: Parser<PrefixOp> =
         spaces
         >>. choice [ stringReturn "sqrt" Sqrt
+                     stringReturn "cbrt" Cbrt
                      stringReturn "log" Log
                      stringReturn "ln" Ln
                      stringReturn "sinh" Sinh
@@ -163,6 +165,7 @@ module Internal =
         | Binary (e1, Exponent, e2) -> reduceExpr e1 ** reduceExpr e2
 
         | Prefix (Sqrt, e) -> sqrt (reduceExpr e)
+        | Prefix (Cbrt, e) -> Math.Cbrt(reduceExpr e)
         | Prefix (Log, e) -> log10 (reduceExpr e)
         | Prefix (Ln, e) -> log (reduceExpr e)
         | Prefix (Sin, e) -> sin (Math.PI / 180. * reduceExpr e)
