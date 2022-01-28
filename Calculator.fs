@@ -32,6 +32,8 @@ module Internal =
         | Radians
         | Neg
         | Fact
+        | RandFloat
+        | RandInt
 
     type SuffixOp =
         | Percent
@@ -83,7 +85,9 @@ module Internal =
                      stringReturn "degrees" Degrees
                      stringReturn "radians" Radians
                      charReturn '-' Neg
-                     stringReturn "fact" Fact ]
+                     stringReturn "fact" Fact
+                     stringReturn "randf" RandFloat
+                     stringReturn "randi" RandInt ]
         .>> spaces
 
     let suffixOp: Parser<SuffixOp> =
@@ -93,15 +97,10 @@ module Internal =
                      charReturn '!' Factorial ]
         .>> spaces
 
-    let rand = Random()
-
     let value: Parser<Expr> =
         spaces
         >>. choice [ charReturn 'e' Math.E
                      stringReturn "pi" Math.PI
-                     pstring "randf" |>> (fun _ -> rand.NextDouble())
-                     pstring "randi"
-                     |>> (fun _ -> rand.NextInt64() % int64 (2. ** 53) |> float)
                      pfloat ]
         |>> Val
         .>> spaces
@@ -170,6 +169,8 @@ module Internal =
         * (Math.PI / 2.)
           ** (1. / 4. * (-1. + cos (n * Math.PI)))
 
+    let rand = Random()
+
     let rec reduceExpr: Expr -> float =
         function
         | Val v -> v
@@ -198,6 +199,8 @@ module Internal =
         | Prefix (Radians, e) -> (reduceExpr e * Math.PI / 180.)
         | Prefix (Neg, e) -> -(reduceExpr e)
         | Prefix (Fact, e) -> factorial (reduceExpr e)
+        | Prefix (RandFloat, e) -> rand.NextDouble() * (reduceExpr e)
+        | Prefix (RandInt, e) -> (rand.NextInt64() % int64 (2. ** 53) |> float) % (reduceExpr e)
 
         | Suffix (e, Percent) -> (reduceExpr e) * 0.01
         | Suffix (e, Factorial) -> factorial (reduceExpr e)
