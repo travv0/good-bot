@@ -12,6 +12,7 @@ module Internal =
         | Times
         | Divide
         | Exponent
+        | Mod
 
     type PrefixOp =
         | Sqrt
@@ -25,6 +26,10 @@ module Internal =
         | Cosh
         | Tanh
         | Abs
+        | Floor
+        | Ceil
+        | Degrees
+        | Radians
         | Neg
         | Fact
 
@@ -47,6 +52,7 @@ module Internal =
         | Minus -> 2
         | Times -> 3
         | Divide -> 3
+        | Mod -> 3
         | Exponent -> 8
 
     let binaryOp: Parser<BinaryOp> =
@@ -55,6 +61,7 @@ module Internal =
                      charReturn '-' Minus
                      charReturn '*' Times
                      charReturn '/' Divide
+                     stringReturn "mod" Mod
                      charReturn '^' Exponent ]
         .>> spaces
 
@@ -71,6 +78,10 @@ module Internal =
                      stringReturn "cos" Cos
                      stringReturn "tan" Tan
                      stringReturn "abs" Abs
+                     stringReturn "floor" Floor
+                     stringReturn "ceil" Ceil
+                     stringReturn "degrees" Degrees
+                     stringReturn "radians" Radians
                      charReturn '-' Neg
                      stringReturn "fact" Fact ]
         .>> spaces
@@ -82,10 +93,15 @@ module Internal =
                      charReturn '!' Factorial ]
         .>> spaces
 
+    let rand = Random()
+
     let value: Parser<Expr> =
         spaces
         >>. choice [ charReturn 'e' Math.E
                      stringReturn "pi" Math.PI
+                     pstring "randf" |>> (fun _ -> rand.NextDouble())
+                     pstring "randi"
+                     |>> (fun _ -> rand.NextInt64() % int64 (2. ** 53) |> float)
                      pfloat ]
         |>> Val
         .>> spaces
@@ -163,6 +179,7 @@ module Internal =
         | Binary (e1, Times, e2) -> reduceExpr e1 * reduceExpr e2
         | Binary (e1, Divide, e2) -> reduceExpr e1 / reduceExpr e2
         | Binary (e1, Exponent, e2) -> reduceExpr e1 ** reduceExpr e2
+        | Binary (e1, Mod, e2) -> reduceExpr e1 % reduceExpr e2
 
         | Prefix (Sqrt, e) -> sqrt (reduceExpr e)
         | Prefix (Cbrt, e) -> Math.Cbrt(reduceExpr e)
@@ -175,6 +192,10 @@ module Internal =
         | Prefix (Cosh, e) -> cosh (reduceExpr e)
         | Prefix (Tanh, e) -> tanh (reduceExpr e)
         | Prefix (Abs, e) -> abs (reduceExpr e)
+        | Prefix (Floor, e) -> floor (reduceExpr e)
+        | Prefix (Ceil, e) -> ceil (reduceExpr e)
+        | Prefix (Degrees, e) -> (reduceExpr e * 180. / Math.PI)
+        | Prefix (Radians, e) -> (reduceExpr e * Math.PI / 180.)
         | Prefix (Neg, e) -> -(reduceExpr e)
         | Prefix (Fact, e) -> factorial (reduceExpr e)
 
