@@ -8,7 +8,9 @@ type BinaryOp =
     | Divide
     | Exponent
 
-type PrefixOp = | Sqrt
+type PrefixOp =
+    | Sqrt
+    | Log
 
 type Expr =
     | Binary of Expr * BinaryOp * Expr
@@ -38,7 +40,9 @@ module private Internal =
         .>> spaces
 
     let prefixOp: Parser<PrefixOp> =
-        spaces >>. choice [ stringReturn "sqrt" Sqrt ]
+        spaces
+        >>. choice [ stringReturn "sqrt" Sqrt
+                     stringReturn "log" Log ]
         .>> spaces
 
     let value: Parser<Expr> = spaces >>. pfloat .>> spaces |>> Val
@@ -91,6 +95,7 @@ module private Internal =
         | Binary (e1, Divide, e2) -> reduceExpr e1 / reduceExpr e2
         | Binary (e1, Exponent, e2) -> reduceExpr e1 ** reduceExpr e2
         | Prefix (Sqrt, e) -> sqrt (reduceExpr e)
+        | Prefix (Log, e) -> log (reduceExpr e)
 
     let rec exprStr: Expr -> string =
         function
@@ -101,6 +106,7 @@ module private Internal =
         | Binary (e1, Divide, e2) -> sprintf "(%s / %s)" (exprStr e1) (exprStr e2)
         | Binary (e1, Exponent, e2) -> sprintf "(%s ^ %s)" (exprStr e1) (exprStr e2)
         | Prefix (Sqrt, e) -> sprintf "sqrt %s" (exprStr e)
+        | Prefix (Log, e) -> sprintf "log %s" (exprStr e)
 
     let parseExpr: Parser<Expr> = expr None .>> eof
 

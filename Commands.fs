@@ -251,6 +251,6 @@ type Commands() =
             do! ctx.TriggerTypingAsync()
 
             match Calculator.eval expr with
-            | Ok f -> do! ctx.RespondChunked(f.ToString("0.###########################"))
+            | Ok f -> do! ctx.RespondChunked(sprintf $"%.99g{f}")
             | Error e -> do! ctx.RespondChunked($"```\n%s{e}\n```")
         }
