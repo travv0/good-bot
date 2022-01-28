@@ -20,6 +20,14 @@ module private Internal =
 
     type Parser<'a> = Parser<'a, unit>
 
+    let prec =
+        function
+        | Plus -> 2
+        | Minus -> 2
+        | Times -> 3
+        | Divide -> 3
+        | Exponent -> 8
+
     let binaryOp: Parser<BinaryOp> =
         spaces
         >>. choice [ charReturn '+' Plus
@@ -41,20 +49,31 @@ module private Internal =
         function
         | None ->
             parse {
-                let! first = single
-                return! expr (Some first) <|> preturn first
+                let! lhs = single
+                return! expr (Some lhs) <|> preturn lhs
             }
-        | Some prev ->
+        | Some lhs ->
             parse {
                 let! op = binaryOp
-                let! second = single
-                return! expr (Some(Binary(prev, op, second)))
+                let p = prec op
+                let! rhs = single
+                let! nextOp = lookAhead (opt binaryOp)
+
+                let nextPrecIsHigher =
+                    nextOp
+                    |> Option.map (fun nop -> prec nop > p)
+                    |> Option.defaultValue false
+
+                if nextPrecIsHigher then
+                    return! expr (Some rhs) |>> fun e -> Binary(lhs, op, e)
+                else
+                    return! expr (Some(Binary(lhs, op, rhs)))
             }
             <|> single
-            <|> preturn prev
+            <|> preturn lhs
 
-    let parenExpr prev : Parser<Expr> =
-        between (pchar '(') (pchar ')') (spaces >>. expr prev .>> spaces)
+    let parenExpr lhs : Parser<Expr> =
+        between (pchar '(') (pchar ')') (spaces >>. expr lhs .>> spaces)
 
     let prefixExpr: Parser<Expr> =
         spaces
