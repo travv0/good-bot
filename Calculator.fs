@@ -130,7 +130,6 @@ module Internal =
         | Some lhs ->
             choice [ suffixExpr expr lhs
                      binaryExpr expr lhs
-                     single expr
                      preturn lhs ]
 
     open MathNet.Numerics
