@@ -1,34 +1,43 @@
 [<RequireQualifiedAccess>]
 module Calculator
 
-type CalcOp =
+type BinaryOp =
     | Plus
     | Minus
     | Times
     | Divide
+    | Exponent
 
-type CalcExpr =
-    | CalcExpr of CalcExpr * CalcOp * CalcExpr
-    | CalcVal of float
+type PrefixOp = | Sqrt
+
+type Expr =
+    | Binary of Expr * BinaryOp * Expr
+    | Prefix of PrefixOp * Expr
+    | Val of float
 
 module private Internal =
     open FParsec
 
     type Parser<'a> = Parser<'a, unit>
 
-    let calcOp: Parser<CalcOp> =
+    let binaryOp: Parser<BinaryOp> =
         spaces
-        >>. choice [ pchar '+' >>% Plus
-                     pchar '-' >>% Minus
-                     pchar '*' >>% Times
-                     pchar '/' >>% Divide ]
+        >>. choice [ charReturn '+' Plus
+                     charReturn '-' Minus
+                     charReturn '*' Times
+                     charReturn '/' Divide
+                     charReturn '^' Exponent ]
         .>> spaces
 
-    let calcVal: Parser<CalcExpr> = spaces >>. pfloat .>> spaces |>> CalcVal
+    let prefixOp: Parser<PrefixOp> =
+        spaces >>. choice [ stringReturn "sqrt" Sqrt ]
+        .>> spaces
+
+    let value: Parser<Expr> = spaces >>. pfloat .>> spaces |>> Val
 
     let single, singleRef = createParserForwardedToRef ()
 
-    let rec expr: option<CalcExpr> -> Parser<CalcExpr> =
+    let rec expr: option<Expr> -> Parser<Expr> =
         function
         | None ->
             parse {
@@ -37,39 +46,48 @@ module private Internal =
             }
         | Some prev ->
             parse {
-                let! op = calcOp
+                let! op = binaryOp
                 let! second = single
-                return! expr (Some(CalcExpr(prev, op, second)))
+                return! expr (Some(Binary(prev, op, second)))
             }
             <|> single
             <|> preturn prev
 
-    let calcParenExpr prev : Parser<CalcExpr> =
+    let parenExpr prev : Parser<Expr> =
         between (pchar '(') (pchar ')') (spaces >>. expr prev .>> spaces)
 
-    singleRef.Value <- calcVal <|> calcParenExpr None
+    let prefixExpr: Parser<Expr> =
+        spaces
+        >>. pipe2 prefixOp (expr None) (fun op v -> Prefix(op, v))
+        .>> spaces
 
-    let rec reduceExpr: CalcExpr -> float =
+    singleRef.Value <- value <|> prefixExpr <|> parenExpr None
+
+    let rec reduceExpr: Expr -> float =
         function
-        | CalcVal v -> v
-        | CalcExpr (e1, Plus, e2) -> reduceExpr e1 + reduceExpr e2
-        | CalcExpr (e1, Minus, e2) -> reduceExpr e1 - reduceExpr e2
-        | CalcExpr (e1, Times, e2) -> reduceExpr e1 * reduceExpr e2
-        | CalcExpr (e1, Divide, e2) -> reduceExpr e1 / reduceExpr e2
+        | Val v -> v
+        | Binary (e1, Plus, e2) -> reduceExpr e1 + reduceExpr e2
+        | Binary (e1, Minus, e2) -> reduceExpr e1 - reduceExpr e2
+        | Binary (e1, Times, e2) -> reduceExpr e1 * reduceExpr e2
+        | Binary (e1, Divide, e2) -> reduceExpr e1 / reduceExpr e2
+        | Binary (e1, Exponent, e2) -> reduceExpr e1 ** reduceExpr e2
+        | Prefix (Sqrt, e) -> sqrt (reduceExpr e)
 
-    let rec exprStr: CalcExpr -> string =
+    let rec exprStr: Expr -> string =
         function
-        | CalcVal v -> string v
-        | CalcExpr (e1, Plus, e2) -> sprintf "(%s + %s)" (exprStr e1) (exprStr e2)
-        | CalcExpr (e1, Minus, e2) -> sprintf "(%s - %s)" (exprStr e1) (exprStr e2)
-        | CalcExpr (e1, Times, e2) -> sprintf "(%s * %s)" (exprStr e1) (exprStr e2)
-        | CalcExpr (e1, Divide, e2) -> sprintf "(%s / %s)" (exprStr e1) (exprStr e2)
+        | Val v -> string v
+        | Binary (e1, Plus, e2) -> sprintf "(%s + %s)" (exprStr e1) (exprStr e2)
+        | Binary (e1, Minus, e2) -> sprintf "(%s - %s)" (exprStr e1) (exprStr e2)
+        | Binary (e1, Times, e2) -> sprintf "(%s * %s)" (exprStr e1) (exprStr e2)
+        | Binary (e1, Divide, e2) -> sprintf "(%s / %s)" (exprStr e1) (exprStr e2)
+        | Binary (e1, Exponent, e2) -> sprintf "(%s ^ %s)" (exprStr e1) (exprStr e2)
+        | Prefix (Sqrt, e) -> sprintf "sqrt %s" (exprStr e)
 
-    let calcExpr: Parser<CalcExpr> = expr None .>> eof
+    let parseExpr: Parser<Expr> = expr None .>> eof
 
 open FParsec.CharParsers
 
 let eval s : Result<float, string> =
-    match run Internal.calcExpr s with
+    match run Internal.parseExpr s with
     | Success (e, _, _) -> Ok(Internal.reduceExpr e)
     | Failure (e, _, _) -> Error e
