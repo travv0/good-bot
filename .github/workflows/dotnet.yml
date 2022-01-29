@@ -1,0 +1,42 @@
+name: dotnet CI
+
+# Trigger the workflow on push or pull request, but only for the master branch
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  cabal:
+    name: ${{ matrix.os }} - dotnet ${{ matrix.dotnet-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+        dotnet-version: ['6.0.x']
+
+    steps:
+    - uses: actions/checkout@v2
+      if: github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.ref == 'refs/heads/master'
+
+    - uses: actions/setup-dotnet@v1.7.2
+      with:
+        dotnet-version: ${{ matrix.dotnet-version }}
+
+    - uses: actions/cache@v2.1.3
+      name: Cache nuget packages
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+
+    - name: Install dependencies
+      run: |
+        dotnet restore
+
+    - name: Build
+      run: |
+        dotnet build
+
+    - name: Test
+      run: |
+        dotnet test test/test.fsproj
