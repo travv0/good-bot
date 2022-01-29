@@ -24,6 +24,8 @@ let ``calc evals correctly`` () =
         3213213.0656864746 + 100.
     )
 
+    Assert.True(Calculator.eval "sin sqrt pi" |> Result.isError)
+    Assert.True(Calculator.eval "sin (sqrt pi)" |> Result.isOk)
     Assert.True(Calculator.eval "abs - 6" |> Result.isError)
     Assert.Equal(6., Calculator.eval "abs (- 6)" |> Result.unwrap)
     Assert.True(Calculator.eval "abs - 6 % + 5!" |> Result.isError)
