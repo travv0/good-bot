@@ -124,7 +124,7 @@ module Internal =
 
     let prefixExpr expr : Parser<Expr> =
         spaces
-        >>. pipe2 prefixOp (valExpr expr <|> expr None) (fun op v -> Prefix(op, v))
+        >>. pipe2 prefixOp (valExpr expr <|> parenExpr expr None) (fun op v -> Prefix(op, v))
         .>> spaces
 
     let single expr =
