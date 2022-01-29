@@ -105,11 +105,6 @@ module Internal =
         |>> Val
         .>> spaces
 
-    let prefixExpr expr : Parser<Expr> =
-        spaces
-        >>. pipe2 prefixOp (expr None) (fun op v -> Prefix(op, v))
-        .>> spaces
-
     let parenExpr expr lhs : Parser<Expr> =
         between (pchar '(') (pchar ')') (spaces >>. expr lhs .>> spaces)
 
@@ -122,6 +117,11 @@ module Internal =
             | Some op -> return! expr (Some(Suffix(v, op)))
             | None -> return v
            }
+
+    let prefixExpr expr : Parser<Expr> =
+        spaces
+        >>. pipe2 prefixOp (valExpr expr <|> expr None) (fun op v -> Prefix(op, v))
+        .>> spaces
 
     let single expr =
         spaces

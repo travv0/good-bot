@@ -38,6 +38,8 @@ let ``calc evals correctly`` () =
     Assert.InRange(Calculator.eval "abs 6 % + 5!" |> unwrapOk, 120.06 - 0.01, 120.06 + 0.01)
     Assert.Equal(Calculator.eval "sin 5%" |> unwrapOk, Calculator.eval "sin (5%)" |> unwrapOk)
     Assert.NotEqual(Calculator.eval "sin 5%" |> unwrapOk, Calculator.eval "(sin 5)%" |> unwrapOk)
+    Assert.Equal(1., Calculator.eval "- 2 + 3" |> unwrapOk)
+    Assert.Equal(-1., Calculator.eval "- 2 + 1" |> unwrapOk)
 
 [<Fact>]
 let ``calc show helpful parse errors`` () =
