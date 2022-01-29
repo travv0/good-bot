@@ -1,6 +1,7 @@
 module Tests
 
 open Extensions
+open System
 open Xunit
 
 [<Fact>]
@@ -73,8 +74,8 @@ Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
     )
 
     Assert.Equal(
-        "Error in Ln: 1 Col: 2
- + \r\n \
+        $"Error in Ln: 1 Col: 2
+ + %s{Environment.NewLine} \
  ^
 Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
 'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'rand',
