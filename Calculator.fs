@@ -35,6 +35,7 @@ module Internal =
         | Fact
         | RandFloat
         | RandInt
+        | Rand
 
     type SuffixOp =
         | Percent
@@ -89,7 +90,8 @@ module Internal =
                      charReturn '-' Neg
                      stringReturn "fact" Fact
                      stringReturn "randf" RandFloat
-                     stringReturn "randi" RandInt ]
+                     stringReturn "randi" RandInt
+                     stringReturn "rand" Rand ]
         .>> spaces
 
     let suffixOp: Parser<SuffixOp> =
@@ -171,7 +173,15 @@ module Internal =
         * (Math.PI / 2.)
           ** (1. / 4. * (-1. + cos (n * Math.PI)))
 
-    let rand = Random()
+    let randGen = Random()
+
+    let randi n =
+        (randGen.NextInt64() % int64 (2. ** 53) |> float) % round n
+
+    let randf n = randGen.NextDouble() * n
+
+    let round (n: float) =
+        Math.Round(n, MidpointRounding.AwayFromZero)
 
     let rec reduceExpr: Expr -> float =
         function
@@ -195,15 +205,16 @@ module Internal =
         | Prefix (Cosh, e) -> cosh (reduceExpr e)
         | Prefix (Tanh, e) -> tanh (reduceExpr e)
         | Prefix (Abs, e) -> abs (reduceExpr e)
-        | Prefix (Round, e) -> Math.Round(reduceExpr e, MidpointRounding.AwayFromZero)
+        | Prefix (Round, e) -> round (reduceExpr e)
         | Prefix (Floor, e) -> floor (reduceExpr e)
         | Prefix (Ceil, e) -> ceil (reduceExpr e)
         | Prefix (Degrees, e) -> (reduceExpr e * 180. / Math.PI)
         | Prefix (Radians, e) -> (reduceExpr e * Math.PI / 180.)
         | Prefix (Neg, e) -> -(reduceExpr e)
         | Prefix (Fact, e) -> factorial (reduceExpr e)
-        | Prefix (RandFloat, e) -> rand.NextDouble() * (reduceExpr e)
-        | Prefix (RandInt, e) -> (rand.NextInt64() % int64 (2. ** 53) |> float) % round (reduceExpr e)
+        | Prefix (RandFloat, e) -> randf (reduceExpr e)
+        | Prefix (RandInt, e) -> randi (reduceExpr e)
+        | Prefix (Rand, e) -> let n = reduceExpr e in if n = round n then randi n else randf n
 
         | Suffix (e, Percent) -> (reduceExpr e) * 0.01
         | Suffix (e, Factorial) -> factorial (reduceExpr e)

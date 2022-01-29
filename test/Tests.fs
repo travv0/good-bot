@@ -49,8 +49,8 @@ let ``calc show helpful parse errors`` () =
    ^
 Note: The error occurred at the end of the input stream.
 Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
-'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'randf',
-'randi', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
+'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'rand',
+'randf', 'randi', 'round', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
 ",
         Calculator.eval "1 +" |> unwrapError
     )
@@ -60,8 +60,8 @@ Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
 +
 ^
 Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
-'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'randf',
-'randi', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
+'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'rand',
+'randf', 'randi', 'round', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
 ",
         Calculator.eval "+" |> unwrapError
     )
@@ -71,8 +71,8 @@ Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
  +
  ^
 Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
-'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'randf',
-'randi', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
+'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'rand',
+'randf', 'randi', 'round', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
 ",
         Calculator.eval " +" |> unwrapError
     )
@@ -82,8 +82,8 @@ Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
  + \r\n \
  ^
 Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
-'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'randf',
-'randi', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
+'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'rand',
+'randf', 'randi', 'round', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
 ",
         Calculator.eval " + " |> unwrapError
     )
