@@ -200,7 +200,7 @@ module Internal =
         | Prefix (Neg, e) -> -(reduceExpr e)
         | Prefix (Fact, e) -> factorial (reduceExpr e)
         | Prefix (RandFloat, e) -> rand.NextDouble() * (reduceExpr e)
-        | Prefix (RandInt, e) -> (rand.NextInt64() % int64 (2. ** 53) |> float) % (reduceExpr e)
+        | Prefix (RandInt, e) -> (rand.NextInt64() % int64 (2. ** 53) |> float) % round (reduceExpr e)
 
         | Suffix (e, Percent) -> (reduceExpr e) * 0.01
         | Suffix (e, Factorial) -> factorial (reduceExpr e)
