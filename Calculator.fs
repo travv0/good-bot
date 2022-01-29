@@ -26,6 +26,7 @@ module Internal =
         | Cosh
         | Tanh
         | Abs
+        | Round
         | Floor
         | Ceil
         | Degrees
@@ -80,6 +81,7 @@ module Internal =
                      stringReturn "cos" Cos
                      stringReturn "tan" Tan
                      stringReturn "abs" Abs
+                     stringReturn "round" Round
                      stringReturn "floor" Floor
                      stringReturn "ceil" Ceil
                      stringReturn "degrees" Degrees
@@ -193,6 +195,7 @@ module Internal =
         | Prefix (Cosh, e) -> cosh (reduceExpr e)
         | Prefix (Tanh, e) -> tanh (reduceExpr e)
         | Prefix (Abs, e) -> abs (reduceExpr e)
+        | Prefix (Round, e) -> Math.Round(reduceExpr e, MidpointRounding.AwayFromZero)
         | Prefix (Floor, e) -> floor (reduceExpr e)
         | Prefix (Ceil, e) -> ceil (reduceExpr e)
         | Prefix (Degrees, e) -> (reduceExpr e * 180. / Math.PI)
