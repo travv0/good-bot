@@ -7,11 +7,8 @@ open System
 
 type CommandContext with
     member ctx.RespondChunked(message: string) =
-        task {
-            for message in message |> Seq.chunkBySize 2000 do
-                ctx.RespondAsync(String(message)).Result |> ignore
-        }
-        :> Task
+        for message in message |> Seq.chunkBySize 2000 do
+            ctx.RespondAsync(String(message)).Result |> ignore
 
 type DiscordUser with
     member user.IsCarl = user.Id = 235148962103951360UL

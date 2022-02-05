@@ -11,12 +11,20 @@ open FsHttp.DslCE
 open Microsoft.Extensions.Logging
 open System
 open System.IO
+open System.Threading
 open System.Threading.Tasks
 open Thoth.Json.Net
 open Types
+open Util
 
 type Commands() =
     inherit BaseCommandModule()
+
+    let trimOutput n s =
+        if String.length s > n then
+            s.Substring(0, n - 3) + "..."
+        else
+            s
 
     let updateDb newDb =
         lock db (fun () ->
@@ -44,7 +52,7 @@ type Commands() =
                             Some(name, activityType) }
 
             if String.IsNullOrWhiteSpace(name) then
-                do! ctx.RespondChunked("Removed status")
+                ctx.RespondChunked("Removed status")
             else
                 let activityTypeText =
                     match activityType with
@@ -55,7 +63,7 @@ type Commands() =
                     | ActivityType.Competing -> "Competing in"
                     | t -> failwithf $"not implemented for %s{string t}"
 
-                do! ctx.RespondChunked($"Updated status to **%s{activityTypeText} %s{name}**")
+                ctx.RespondChunked($"Updated status to **%s{activityTypeText} %s{name}**")
         }
 
     let buildDefineOutput term (definition: Definition) =
@@ -139,11 +147,11 @@ type Commands() =
             do! ctx.TriggerTypingAsync()
 
             if String.IsNullOrWhiteSpace(term) then
-                do! ctx.RespondChunked("Missing term to define")
+                ctx.RespondChunked("Missing term to define")
             else
                 match getOutput ctx.Client.Logger term with
-                | Some output -> do! ctx.RespondChunked(output)
-                | None -> do! ctx.RespondChunked("No definition found for **" + term + "**")
+                | Some output -> ctx.RespondChunked(output)
+                | None -> ctx.RespondChunked("No definition found for **" + term + "**")
         }
 
     [<Command("rr"); Description("Play Russian Roulette!")>]
@@ -153,10 +161,10 @@ type Commands() =
             let rand = Random()
 
             if rand.Next(6) = 0 then
-                do! ctx.RespondChunked("Bang!")
+                ctx.RespondChunked("Bang!")
                 do! ctx.Guild.BanMemberAsync(ctx.Member, 0, "Bang!")
             else
-                do! ctx.RespondChunked("Click.")
+                ctx.RespondChunked("Click.")
         }
 
     [<Command("define");
@@ -178,10 +186,10 @@ type Commands() =
             do! ctx.TriggerTypingAsync()
 
             if String.IsNullOrWhiteSpace(response) then
-                do! ctx.RespondChunked("Missing response to add")
+                ctx.RespondChunked("Missing response to add")
             else
                 updateDb { db with Responses = response :: db.Responses |> List.distinct }
-                do! ctx.RespondChunked($"Added **%s{response}** to responses")
+                ctx.RespondChunked($"Added **%s{response}** to responses")
         }
 
     [<Command("remove"); Description("Remove a response from the bot's response pool.")>]
@@ -194,19 +202,19 @@ type Commands() =
             do! ctx.TriggerTypingAsync()
 
             if String.IsNullOrWhiteSpace(response) then
-                do! ctx.RespondChunked("Missing response to remove")
+                ctx.RespondChunked("Missing response to remove")
             elif not (List.contains response db.Responses) then
-                do! ctx.RespondChunked($"Response **%s{response}** not found")
+                ctx.RespondChunked($"Response **%s{response}** not found")
             else
                 updateDb { db with Responses = db.Responses |> List.filter ((<>) response) }
-                do! ctx.RespondChunked($"Removed **%s{response}** from responses")
+                ctx.RespondChunked($"Removed **%s{response}** from responses")
         }
 
     [<Command("list"); Description("List all responses in the response pool.")>]
     member _.ListResponsesAsync(ctx: CommandContext) : Task =
         task {
             do! ctx.TriggerTypingAsync()
-            do! ctx.RespondChunked(String.join "\n" db.Responses)
+            ctx.RespondChunked(String.join "\n" db.Responses)
         }
 
     [<Command("playing"); Description("Set bot's activity to Playing.")>]
@@ -235,14 +243,14 @@ type Commands() =
             do! ctx.TriggerTypingAsync()
             let meanness = level |> max 0 |> min 11
             updateDb { db with Meanness = meanness }
-            do! ctx.RespondChunked($"Set meanness to **%d{meanness}**")
+            ctx.RespondChunked($"Set meanness to **%d{meanness}**")
         }
 
     [<Command("meanness")>]
     member _.MeannessAsync(ctx: CommandContext) : Task =
         task {
             do! ctx.TriggerTypingAsync()
-            do! ctx.RespondChunked($"Current meanness is **%d{db.Meanness}**")
+            ctx.RespondChunked($"Current meanness is **%d{db.Meanness}**")
         }
 
     [<Command("calc"); Description("Calculate the result of an expression.")>]
@@ -251,30 +259,38 @@ type Commands() =
             do! ctx.TriggerTypingAsync()
 
             match Calculator.eval expr with
-            | Ok f -> do! ctx.RespondChunked(sprintf $"%.16g{f}")
-            | Error e -> do! ctx.RespondChunked($"```\n%s{e}\n```")
+            | Ok f -> ctx.RespondChunked(sprintf $"%.16g{f}")
+            | Error e -> ctx.RespondChunked($"```\n%s{e}\n```")
         }
 
     [<Command("lox"); Description("View the result of a Lox program.")>]
     member _.LoxAsync(ctx: CommandContext, [<RemainingText; Description("The lox program to run.")>] program) : Task =
         task {
             do! ctx.TriggerTypingAsync()
+            let code = parseCodeBlock program
             let path = Path.GetTempFileName()
-            File.WriteAllText(path, program)
+            File.WriteAllText(path, code)
 
-            CreateProcess.fromRawCommand "flox" [ path ]
-            |> CreateProcess.redirectOutput
+            let proc =
+                CreateProcess.fromRawCommand "flox" [ path ]
+                |> CreateProcess.redirectOutput
+                |> CreateProcess.addOnStartedEx (fun p ->
+                    Thread.Sleep(TimeSpan.FromSeconds(3))
+
+                    if not p.Process.HasExited then
+                        p.Process.Kill()
+                        ctx.RespondChunked("```\n<Timeout>\n```"))
+
+            proc
             |> Proc.run
             |> function
-                | { Result = { Output = ok; Error = error }
-                    ExitCode = code } ->
-                    if not (String.IsNullOrWhiteSpace error) then
-                        ctx.RespondChunked($"```\n%s{error}\n```")
-                        |> ignore
+                | { Result = { Output = ok; Error = error } } ->
+                    let trimmedOk = trimOutput 1992 ok
+                    let trimmedError = trimOutput 1992 error
 
-                    if not (String.IsNullOrWhiteSpace(ok)) then
-                        ctx.RespondChunked($"```\n%s{ok}\n```") |> ignore
+                    if not (String.IsNullOrWhiteSpace trimmedError) then
+                        ctx.RespondChunked($"```\n%s{trimmedError}\n```")
 
-                    if code <> 0 then
-                        ctx.RespondChunked($"exit: %d{code}") |> ignore
+                    if not (String.IsNullOrWhiteSpace(trimmedOk)) then
+                        ctx.RespondChunked($"```\n%s{trimmedOk}\n```")
         }
