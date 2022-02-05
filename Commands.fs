@@ -5,7 +5,7 @@ open DSharpPlus.CommandsNext.Attributes
 open DSharpPlus.Entities
 open Data
 open Extensions
-open FParsec.CharParsers
+open Fake.Core
 open FsHttp
 open FsHttp.DslCE
 open Microsoft.Extensions.Logging
@@ -245,7 +245,7 @@ type Commands() =
             do! ctx.RespondChunked($"Current meanness is **%d{db.Meanness}**")
         }
 
-    [<Command("calc")>]
+    [<Command("calc"); Description("Calculate the result of an expression.")>]
     member _.CalcAsync(ctx: CommandContext, [<RemainingText; Description("The expression to evaluate.")>] expr) : Task =
         task {
             do! ctx.TriggerTypingAsync()
@@ -253,4 +253,28 @@ type Commands() =
             match Calculator.eval expr with
             | Ok f -> do! ctx.RespondChunked(sprintf $"%.16g{f}")
             | Error e -> do! ctx.RespondChunked($"```\n%s{e}\n```")
+        }
+
+    [<Command("lox"); Description("View the result of a Lox program.")>]
+    member _.LoxAsync(ctx: CommandContext, [<RemainingText; Description("The lox program to run.")>] program) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
+            let path = Path.GetTempFileName()
+            File.WriteAllText(path, program)
+
+            CreateProcess.fromRawCommand "flox" [ path ]
+            |> CreateProcess.redirectOutput
+            |> Proc.run
+            |> function
+                | { Result = { Output = ok; Error = error }
+                    ExitCode = code } ->
+                    if not (String.IsNullOrWhiteSpace error) then
+                        ctx.RespondChunked($"```\n%s{error}\n```")
+                        |> ignore
+
+                    if not (String.IsNullOrWhiteSpace(ok)) then
+                        ctx.RespondChunked($"```\n%s{ok}\n```") |> ignore
+
+                    if code <> 0 then
+                        ctx.RespondChunked($"exit: %d{code}") |> ignore
         }
