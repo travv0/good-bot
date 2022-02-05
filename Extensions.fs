@@ -19,22 +19,12 @@ module String =
 
 [<RequireQualifiedAccess>]
 module Result =
-    let unwrap =
+    let ok ifError =
         function
         | Ok v -> v
-        | Error e -> failwithf "%s" e
+        | Error _ -> ifError
 
-    let unwrapError =
+    let error ifOk =
         function
-        | Ok v -> failwithf "%A" v
+        | Ok _ -> ifOk
         | Error e -> e
-
-    let isOk =
-        function
-        | Ok v -> true
-        | Error e -> false
-
-    let isError =
-        function
-        | Ok v -> false
-        | Error e -> true

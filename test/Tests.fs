@@ -4,6 +4,28 @@ open Extensions
 open System
 open Xunit
 
+[<RequireQualifiedAccess>]
+module Result =
+    let unwrap =
+        function
+        | Ok v -> v
+        | Error e -> failwithf "%s" e
+
+    let unwrapError =
+        function
+        | Ok v -> failwithf "%A" v
+        | Error e -> e
+
+    let isOk =
+        function
+        | Ok v -> true
+        | Error e -> false
+
+    let isError =
+        function
+        | Ok v -> false
+        | Error e -> true
+
 [<Fact>]
 let ``calc evals correctly`` () =
     Assert.InRange(Calculator.eval "9 * 18%" |> Result.unwrap, 1.62 - 0.01, 1.62 + 0.01)
@@ -50,7 +72,8 @@ Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
 'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'rand',
 'randf', 'randi', 'round', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
 ",
-        Calculator.eval "1 +" |> Result.unwrapError
+        Calculator.eval "1 +" |> Result.unwrapError,
+        ignoreLineEndingDifferences = true
     )
 
     Assert.Equal(
@@ -61,7 +84,8 @@ Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
 'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'rand',
 'randf', 'randi', 'round', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
 ",
-        Calculator.eval "+" |> Result.unwrapError
+        Calculator.eval "+" |> Result.unwrapError,
+        ignoreLineEndingDifferences = true
     )
 
     Assert.Equal(
@@ -72,7 +96,8 @@ Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
 'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'rand',
 'randf', 'randi', 'round', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
 ",
-        Calculator.eval " +" |> Result.unwrapError
+        Calculator.eval " +" |> Result.unwrapError,
+        ignoreLineEndingDifferences = true
     )
 
     Assert.Equal(
@@ -83,7 +108,8 @@ Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
 'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'rand',
 'randf', 'randi', 'round', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
 ",
-        Calculator.eval " + " |> Result.unwrapError
+        Calculator.eval " + " |> Result.unwrapError,
+        ignoreLineEndingDifferences = true
     )
 
     Assert.Equal(
@@ -93,7 +119,8 @@ Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
 Note: The error occurred at the end of the input stream.
 Expecting: '!', '!!', '%', ')', '*', '+', '-', '/', '^' or 'mod'
 ",
-        Calculator.eval "(1" |> Result.unwrapError
+        Calculator.eval "(1" |> Result.unwrapError,
+        ignoreLineEndingDifferences = true
     )
 
     Assert.Equal(
@@ -103,5 +130,118 @@ Expecting: '!', '!!', '%', ')', '*', '+', '-', '/', '^' or 'mod'
 Note: The error occurred at the end of the input stream.
 Expecting: '!', '!!', '%', ')', '*', '+', '-', '/', '^' or 'mod'
 ",
-        Calculator.eval "(1+2" |> Result.unwrapError
+        Calculator.eval "(1+2" |> Result.unwrapError,
+        ignoreLineEndingDifferences = true
+    )
+
+[<Fact>]
+let ``code blocks parse correctly`` () =
+    Assert.Equal(
+        "
+for (var i = 0; i < 10; i = i + 1) {
+  print i;
+}
+",
+        Util.parseCodeBlockFromMessage
+            "fdsafdsa
+```lox
+for (var i = 0; i < 10; i = i + 1) {
+  print i;
+}
+``` fdsafdas ```"
+        |> Result.unwrap,
+        ignoreLineEndingDifferences = true
+    )
+
+    Assert.Equal(
+        "
+for (var i = 0; i < 10; i = i + 1) {
+  print \"``\";
+}
+",
+        Util.parseCodeBlockFromMessage
+            "```lox
+for (var i = 0; i < 10; i = i + 1) {
+  print \"``\";
+}
+```"
+        |> Result.unwrap,
+        ignoreLineEndingDifferences = true
+    )
+
+    Assert.Equal(
+        "
+for (var i = 0; i < 10; i = i + 1) {
+  print \"``\";
+}
+",
+        Util.parseCodeBlockFromMessage
+            "```lox
+for (var i = 0; i < 10; i = i + 1) {
+  print \"``\";
+}
+```"
+        |> Result.unwrap,
+        ignoreLineEndingDifferences = true
+    )
+
+    Assert.Equal(
+        "
+for (var i = 0; i < 10; i = i + 1) {
+  print \"``\";
+}
+",
+        Util.parseCodeBlockFromMessage
+            "```
+for (var i = 0; i < 10; i = i + 1) {
+  print \"``\";
+}
+```"
+        |> Result.unwrap,
+        ignoreLineEndingDifferences = true
+    )
+
+    Assert.Equal(
+        "
+for (var i = 0; i < 10; i = i + 1) {
+  print \"",
+        Util.parseCodeBlockFromMessage
+            "```
+for (var i = 0; i < 10; i = i + 1) {
+  print \"```\";
+}
+```"
+        |> Result.unwrap,
+        ignoreLineEndingDifferences = true
+    )
+
+    Assert.Equal(
+        "for (var i = 0; i < 10; i = i + 1) { print \"``\"; }",
+        Util.parseCodeBlockFromMessage "`for (var i = 0; i < 10; i = i + 1) { print \"``\"; }`"
+        |> Result.unwrap,
+        ignoreLineEndingDifferences = true
+    )
+
+    Assert.Equal(
+        "for (var i = 0; i < 10; i = i + 1) { print \"",
+        Util.parseCodeBlockFromMessage "`for (var i = 0; i < 10; i = i + 1) { print \"`\"; }`"
+        |> Result.unwrap,
+        ignoreLineEndingDifferences = true
+    )
+
+    Assert.Equal(
+        "for (var i = 0; i < 10; i = i + 1) { print \"`\"; }",
+        Util.parseCodeBlockFromMessage "``for (var i = 0; i < 10; i = i + 1) { print \"`\"; }``"
+        |> Result.unwrap,
+        ignoreLineEndingDifferences = true
+    )
+
+    Assert.True(
+        Util.parseCodeBlockFromMessage
+            "
+for (var i = 0; i < 10; i = i + 1) {
+  print \"``\";
+}
+"
+        |> Result.isError
     )

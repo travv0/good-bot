@@ -267,7 +267,11 @@ type Commands() =
     member _.LoxAsync(ctx: CommandContext, [<RemainingText; Description("The lox program to run.")>] program) : Task =
         task {
             do! ctx.TriggerTypingAsync()
-            let code = parseCodeBlock program
+
+            let code =
+                parseCodeBlockFromMessage program
+                |> Result.ok program
+
             let path = Path.GetTempFileName()
             File.WriteAllText(path, code)
 
