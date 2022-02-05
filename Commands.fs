@@ -265,6 +265,21 @@ type Commands() =
 
     [<Command("lox"); Description("View the result of a Lox program.")>]
     member _.LoxAsync(ctx: CommandContext, [<RemainingText; Description("The lox program to run.")>] program) : Task =
+        let loxOutput
+            { Result = { Output = ok; Error = error }
+              ExitCode = exitCode }
+            =
+            let trimmedError = trimOutput 1992 error
+
+            if not (String.IsNullOrWhiteSpace trimmedError) then
+                ctx.RespondChunked($"```\n%s{trimmedError}\n```")
+
+            if exitCode = 0 then
+                let trimmedOk = trimOutput 1992 ok
+
+                if not (String.IsNullOrWhiteSpace(trimmedOk)) then
+                    ctx.RespondChunked($"```\n%s{trimmedOk}\n```")
+
         task {
             do! ctx.TriggerTypingAsync()
 
@@ -275,29 +290,14 @@ type Commands() =
             let path = Path.GetTempFileName()
             File.WriteAllText(path, code)
 
-            let proc =
-                CreateProcess.fromRawCommand "flox" [ path ]
-                |> CreateProcess.redirectOutput
-                |> CreateProcess.addOnStartedEx (fun p ->
-                    Thread.Sleep(TimeSpan.FromSeconds(3))
+            CreateProcess.fromRawCommand "flox" [ path ]
+            |> CreateProcess.redirectOutput
+            |> CreateProcess.addOnStartedEx (fun p ->
+                Thread.Sleep(TimeSpan.FromSeconds(3))
 
-                    if not p.Process.HasExited then
-                        p.Process.Kill()
-                        ctx.RespondChunked("```\n<Timeout>\n```"))
-
-            proc
+                if not p.Process.HasExited then
+                    p.Process.Kill()
+                    ctx.RespondChunked("```\n<Timeout>\n```"))
             |> Proc.run
-            |> function
-                | { Result = { Output = ok; Error = error }
-                    ExitCode = exitCode } ->
-                    let trimmedError = trimOutput 1992 error
-
-                    if not (String.IsNullOrWhiteSpace trimmedError) then
-                        ctx.RespondChunked($"```\n%s{trimmedError}\n```")
-
-                    if exitCode = 0 then
-                        let trimmedOk = trimOutput 1992 ok
-
-                        if not (String.IsNullOrWhiteSpace(trimmedOk)) then
-                            ctx.RespondChunked($"```\n%s{trimmedOk}\n```")
+            |> loxOutput
         }
