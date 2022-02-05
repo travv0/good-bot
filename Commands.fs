@@ -288,13 +288,16 @@ type Commands() =
             proc
             |> Proc.run
             |> function
-                | { Result = { Output = ok; Error = error } } ->
-                    let trimmedOk = trimOutput 1992 ok
+                | { Result = { Output = ok; Error = error }
+                    ExitCode = exitCode } ->
                     let trimmedError = trimOutput 1992 error
 
                     if not (String.IsNullOrWhiteSpace trimmedError) then
                         ctx.RespondChunked($"```\n%s{trimmedError}\n```")
 
-                    if not (String.IsNullOrWhiteSpace(trimmedOk)) then
-                        ctx.RespondChunked($"```\n%s{trimmedOk}\n```")
+                    if exitCode = 0 then
+                        let trimmedOk = trimOutput 1992 ok
+
+                        if not (String.IsNullOrWhiteSpace(trimmedOk)) then
+                            ctx.RespondChunked($"```\n%s{trimmedOk}\n```")
         }
