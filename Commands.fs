@@ -154,6 +154,53 @@ type Commands() =
                 | None -> ctx.RespondChunked("No definition found for **" + term + "**")
         }
 
+    let lox (ctx: CommandContext) dumpAst program =
+        let loxOutput
+            { Result = { Output = ok; Error = error }
+              ExitCode = exitCode }
+            =
+            let trimmedError = trimOutput 1992 error
+
+            if not (String.IsNullOrWhiteSpace trimmedError) then
+                ctx.RespondChunked($"```\n%s{trimmedError}\n```")
+
+            elif exitCode = 0 then
+                let trimmedOk = trimOutput 1992 ok
+
+                if (String.IsNullOrWhiteSpace(trimmedOk)) then
+                    ctx.RespondChunked($"```\n<No output>\n```")
+                else
+                    ctx.RespondChunked($"```\n%s{trimmedOk}\n```")
+
+            else
+                ctx.RespondChunked($"```\n<Unknown error>\n```")
+
+        task {
+            do! ctx.TriggerTypingAsync()
+
+            let code =
+                parseCodeBlockFromMessage program
+                |> Result.ok program
+
+            let path = Path.GetTempFileName()
+            File.WriteAllText(path, code)
+
+            Arguments.Empty
+            |> Arguments.appendIf dumpAst "--ast"
+            |> Arguments.append [ path ]
+            |> Arguments.toList
+            |> CreateProcess.fromRawCommand "flox"
+            |> CreateProcess.redirectOutput
+            |> CreateProcess.addOnStartedEx (fun p ->
+                Thread.Sleep(TimeSpan.FromSeconds(3))
+
+                if not p.Process.HasExited then
+                    p.Process.Kill()
+                    ctx.RespondChunked("```\n<Timeout>\n```"))
+            |> Proc.run
+            |> loxOutput
+        }
+
     [<Command("rr"); Description("Play Russian Roulette!")>]
     member _.RussianRouletteAsync(ctx: CommandContext) : Task =
         task {
@@ -265,39 +312,12 @@ type Commands() =
 
     [<Command("lox"); Description("View the result of a Lox program.")>]
     member _.LoxAsync(ctx: CommandContext, [<RemainingText; Description("The lox program to run.")>] program) : Task =
-        let loxOutput
-            { Result = { Output = ok; Error = error }
-              ExitCode = exitCode }
-            =
-            let trimmedError = trimOutput 1992 error
+        lox ctx false program
 
-            if not (String.IsNullOrWhiteSpace trimmedError) then
-                ctx.RespondChunked($"```\n%s{trimmedError}\n```")
-
-            if exitCode = 0 then
-                let trimmedOk = trimOutput 1992 ok
-
-                if not (String.IsNullOrWhiteSpace(trimmedOk)) then
-                    ctx.RespondChunked($"```\n%s{trimmedOk}\n```")
-
-        task {
-            do! ctx.TriggerTypingAsync()
-
-            let code =
-                parseCodeBlockFromMessage program
-                |> Result.ok program
-
-            let path = Path.GetTempFileName()
-            File.WriteAllText(path, code)
-
-            CreateProcess.fromRawCommand "flox" [ path ]
-            |> CreateProcess.redirectOutput
-            |> CreateProcess.addOnStartedEx (fun p ->
-                Thread.Sleep(TimeSpan.FromSeconds(3))
-
-                if not p.Process.HasExited then
-                    p.Process.Kill()
-                    ctx.RespondChunked("```\n<Timeout>\n```"))
-            |> Proc.run
-            |> loxOutput
-        }
+    [<Command("loxast"); Description("View the syntax tree of a Lox program.")>]
+    member _.LoxAstAsync
+        (
+            ctx: CommandContext,
+            [<RemainingText; Description("The lox program to lex and parse.")>] program
+        ) : Task =
+        lox ctx true program
