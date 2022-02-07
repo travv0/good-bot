@@ -189,7 +189,7 @@ type Commands() =
             |> Arguments.appendIf dumpAst "--ast"
             |> Arguments.append [ path ]
             |> Arguments.toList
-            |> CreateProcess.fromRawCommand "flox"
+            |> CreateProcess.fromRawCommand "hlox"
             |> CreateProcess.redirectOutput
             |> CreateProcess.addOnStartedEx (fun p ->
                 Thread.Sleep(TimeSpan.FromSeconds(3))
