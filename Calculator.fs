@@ -67,50 +67,56 @@ module Internal =
                      charReturn '/' Divide
                      stringReturn "mod" Mod
                      charReturn '^' Exponent ]
+        <?> "operator"
         .>> spaces
 
     let prefixOp: Parser<PrefixOp> =
         spaces
-        >>. choice [ stringReturn "sqrt" Sqrt
-                     stringReturn "cbrt" Cbrt
-                     stringReturn "log" Log
-                     stringReturn "ln" Ln
-                     stringReturn "sinh" Sinh
-                     stringReturn "cosh" Cosh
-                     stringReturn "tanh" Tanh
-                     stringReturn "sin" Sin
-                     stringReturn "cos" Cos
-                     stringReturn "tan" Tan
-                     stringReturn "abs" Abs
-                     stringReturn "round" Round
-                     stringReturn "floor" Floor
-                     stringReturn "ceil" Ceil
-                     stringReturn "degrees" Degrees
-                     stringReturn "radians" Radians
-                     charReturn '-' Neg
-                     stringReturn "fact" Fact
-                     stringReturn "randf" RandFloat
-                     stringReturn "randi" RandInt
-                     stringReturn "rand" Rand ]
-        .>> spaces
+        >>. (choice [ stringReturn "sqrt" Sqrt
+                      stringReturn "cbrt" Cbrt
+                      stringReturn "log" Log
+                      stringReturn "ln" Ln
+                      stringReturn "sinh" Sinh
+                      stringReturn "cosh" Cosh
+                      stringReturn "tanh" Tanh
+                      stringReturn "sin" Sin
+                      stringReturn "cos" Cos
+                      stringReturn "tan" Tan
+                      stringReturn "abs" Abs
+                      stringReturn "round" Round
+                      stringReturn "floor" Floor
+                      stringReturn "ceil" Ceil
+                      stringReturn "degrees" Degrees
+                      stringReturn "radians" Radians
+                      charReturn '-' Neg
+                      stringReturn "fact" Fact
+                      stringReturn "randf" RandFloat
+                      stringReturn "randi" RandInt
+                      stringReturn "rand" Rand ]
+             .>>? (spaces1 <|> lookAhead (skipChar '(') >>. spaces))
+        <?> "function"
 
     let suffixOp: Parser<SuffixOp> =
         spaces
         >>. choice [ charReturn '%' Percent
                      stringReturn "!!" DoubleFactorial
                      charReturn '!' Factorial ]
+        <?> "suffix"
         .>> spaces
 
     let value: Parser<Expr> =
         spaces
         >>. choice [ charReturn 'e' Math.E
-                     stringReturn "pi" Math.PI
-                     pfloat ]
+                     stringReturn "pi" Math.PI ]
+        <?> "constant"
+        <|> pfloat
+        <?> "number"
         |>> Val
         .>> spaces
 
     let parenExpr expr lhs : Parser<Expr> =
         between (pchar '(') (pchar ')') (spaces >>. expr lhs .>> spaces)
+        <?> "parenthesized expression"
 
     let valExpr expr : Parser<Expr> =
         attempt

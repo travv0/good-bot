@@ -60,6 +60,9 @@ let ``calc evals correctly`` () =
     Assert.Equal(-1., Calculator.eval "- 2 + 1" |> Result.unwrap)
     Assert.True(Calculator.eval "sqrt sqrt 4" |> Result.isError)
     Assert.True(Calculator.eval "sqrt (sqrt 4)" |> Result.isOk)
+    Assert.True(Calculator.eval "1 + sine" |> Result.isError)
+    Assert.True(Calculator.eval "1 + sin e" |> Result.isOk)
+    Assert.Equal(Calculator.eval "1 + sin e" |> Result.unwrap, Calculator.eval "1 + sin(e)" |> Result.unwrap)
 
 [<Fact>]
 let ``calc show helpful parse errors`` () =
@@ -68,9 +71,7 @@ let ``calc show helpful parse errors`` () =
 1 +
    ^
 Note: The error occurred at the end of the input stream.
-Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
-'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'rand',
-'randf', 'randi', 'round', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
+Expecting: function, number or parenthesized expression
 ",
         Calculator.eval "1 +" |> Result.unwrapError,
         ignoreLineEndingDifferences = true
@@ -80,9 +81,7 @@ Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
         "Error in Ln: 1 Col: 1
 +
 ^
-Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
-'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'rand',
-'randf', 'randi', 'round', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
+Expecting: function, number or parenthesized expression
 ",
         Calculator.eval "+" |> Result.unwrapError,
         ignoreLineEndingDifferences = true
@@ -92,9 +91,7 @@ Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
         "Error in Ln: 1 Col: 2
  +
  ^
-Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
-'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'rand',
-'randf', 'randi', 'round', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
+Expecting: function, number or parenthesized expression
 ",
         Calculator.eval " +" |> Result.unwrapError,
         ignoreLineEndingDifferences = true
@@ -104,9 +101,7 @@ Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
         $"Error in Ln: 1 Col: 2
  + %s{Environment.NewLine} \
  ^
-Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
-'cosh', 'degrees', 'e', 'fact', 'floor', 'ln', 'log', 'pi', 'radians', 'rand',
-'randf', 'randi', 'round', 'sin', 'sinh', 'sqrt', 'tan' or 'tanh'
+Expecting: function, number or parenthesized expression
 ",
         Calculator.eval " + " |> Result.unwrapError,
         ignoreLineEndingDifferences = true
@@ -117,7 +112,7 @@ Expecting: floating-point number, '(', '-', 'abs', 'cbrt', 'ceil', 'cos',
 (1
   ^
 Note: The error occurred at the end of the input stream.
-Expecting: '!', '!!', '%', ')', '*', '+', '-', '/', '^' or 'mod'
+Expecting: operator, suffix or ')'
 ",
         Calculator.eval "(1" |> Result.unwrapError,
         ignoreLineEndingDifferences = true
@@ -128,9 +123,19 @@ Expecting: '!', '!!', '%', ')', '*', '+', '-', '/', '^' or 'mod'
 (1+2
     ^
 Note: The error occurred at the end of the input stream.
-Expecting: '!', '!!', '%', ')', '*', '+', '-', '/', '^' or 'mod'
+Expecting: operator, suffix or ')'
 ",
         Calculator.eval "(1+2" |> Result.unwrapError,
+        ignoreLineEndingDifferences = true
+    )
+
+    Assert.Equal(
+        "Error in Ln: 1 Col: 5
+1 + sine
+    ^
+Expecting: function, number or parenthesized expression
+",
+        Calculator.eval "1 + sine" |> Result.unwrapError,
         ignoreLineEndingDifferences = true
     )
 
