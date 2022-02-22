@@ -48,6 +48,7 @@ let ``calc evals correctly`` () =
 
     Assert.True(Calculator.eval "sin sqrt pi" |> Result.isError)
     Assert.True(Calculator.eval "sin (sqrt pi)" |> Result.isOk)
+    Assert.True(Calculator.eval "sin ( sqrt pi )" |> Result.isOk)
     Assert.True(Calculator.eval "abs - 6" |> Result.isError)
     Assert.Equal(6., Calculator.eval "abs (- 6)" |> Result.unwrap)
     Assert.True(Calculator.eval "abs - 6 % + 5!" |> Result.isError)
@@ -71,7 +72,7 @@ let ``calc show helpful parse errors`` () =
 1 +
    ^
 Note: The error occurred at the end of the input stream.
-Expecting: function, number or parenthesized expression
+Expecting: constant, function, number or parenthesized expression
 ",
         Calculator.eval "1 +" |> Result.unwrapError,
         ignoreLineEndingDifferences = true
@@ -81,7 +82,7 @@ Expecting: function, number or parenthesized expression
         "Error in Ln: 1 Col: 1
 +
 ^
-Expecting: function, number or parenthesized expression
+Expecting: constant, function, number or parenthesized expression
 ",
         Calculator.eval "+" |> Result.unwrapError,
         ignoreLineEndingDifferences = true
@@ -91,7 +92,7 @@ Expecting: function, number or parenthesized expression
         "Error in Ln: 1 Col: 2
  +
  ^
-Expecting: function, number or parenthesized expression
+Expecting: constant, function, number or parenthesized expression
 ",
         Calculator.eval " +" |> Result.unwrapError,
         ignoreLineEndingDifferences = true
@@ -101,7 +102,7 @@ Expecting: function, number or parenthesized expression
         $"Error in Ln: 1 Col: 2
  + %s{Environment.NewLine} \
  ^
-Expecting: function, number or parenthesized expression
+Expecting: constant, function, number or parenthesized expression
 ",
         Calculator.eval " + " |> Result.unwrapError,
         ignoreLineEndingDifferences = true
@@ -133,7 +134,7 @@ Expecting: operator, suffix or ')'
         "Error in Ln: 1 Col: 5
 1 + sine
     ^
-Expecting: function, number or parenthesized expression
+Expecting: constant, function, number or parenthesized expression
 ",
         Calculator.eval "1 + sine" |> Result.unwrapError,
         ignoreLineEndingDifferences = true

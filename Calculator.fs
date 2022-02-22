@@ -60,84 +60,79 @@ module Internal =
         | Exponent -> 8
 
     let binaryOp: Parser<BinaryOp> =
-        spaces
-        >>. choice [ charReturn '+' Plus
-                     charReturn '-' Minus
-                     charReturn '*' Times
-                     charReturn '/' Divide
-                     stringReturn "mod" Mod
-                     charReturn '^' Exponent ]
-        <?> "operator"
+        choice [ charReturn '+' Plus
+                 charReturn '-' Minus
+                 charReturn '*' Times
+                 charReturn '/' Divide
+                 stringReturn "mod" Mod
+                 charReturn '^' Exponent ]
         .>> spaces
+        <?> "operator"
 
     let prefixOp: Parser<PrefixOp> =
-        spaces
-        >>. (choice [ stringReturn "sqrt" Sqrt
-                      stringReturn "cbrt" Cbrt
-                      stringReturn "log" Log
-                      stringReturn "ln" Ln
-                      stringReturn "sinh" Sinh
-                      stringReturn "cosh" Cosh
-                      stringReturn "tanh" Tanh
-                      stringReturn "sin" Sin
-                      stringReturn "cos" Cos
-                      stringReturn "tan" Tan
-                      stringReturn "abs" Abs
-                      stringReturn "round" Round
-                      stringReturn "floor" Floor
-                      stringReturn "ceil" Ceil
-                      stringReturn "degrees" Degrees
-                      stringReturn "radians" Radians
-                      charReturn '-' Neg
-                      stringReturn "fact" Fact
-                      stringReturn "randf" RandFloat
-                      stringReturn "randi" RandInt
-                      stringReturn "rand" Rand ]
-             .>>? (spaces1 <|> lookAhead (skipChar '(') >>. spaces))
+        choice [ stringReturn "sqrt" Sqrt
+                 stringReturn "cbrt" Cbrt
+                 stringReturn "log" Log
+                 stringReturn "ln" Ln
+                 stringReturn "sinh" Sinh
+                 stringReturn "cosh" Cosh
+                 stringReturn "tanh" Tanh
+                 stringReturn "sin" Sin
+                 stringReturn "cos" Cos
+                 stringReturn "tan" Tan
+                 stringReturn "abs" Abs
+                 stringReturn "round" Round
+                 stringReturn "floor" Floor
+                 stringReturn "ceil" Ceil
+                 stringReturn "degrees" Degrees
+                 stringReturn "radians" Radians
+                 charReturn '-' Neg
+                 stringReturn "fact" Fact
+                 stringReturn "randf" RandFloat
+                 stringReturn "randi" RandInt
+                 stringReturn "rand" Rand ]
+        .>>? (spaces1 <|> lookAhead (skipChar '('))
         <?> "function"
 
     let suffixOp: Parser<SuffixOp> =
-        spaces
-        >>. choice [ charReturn '%' Percent
-                     stringReturn "!!" DoubleFactorial
-                     charReturn '!' Factorial ]
+        choice [ charReturn '%' Percent
+                 stringReturn "!!" DoubleFactorial
+                 charReturn '!' Factorial ]
+        .>> spaces
         <?> "suffix"
-        .>> spaces
 
-    let value: Parser<Expr> =
-        spaces
-        >>. choice [ charReturn 'e' Math.E
-                     stringReturn "pi" Math.PI ]
-        <?> "constant"
-        <|> pfloat
-        <?> "number"
-        |>> Val
+    let constant =
+        choice [ charReturn 'e' Math.E
+                 stringReturn "pi" Math.PI ]
         .>> spaces
+        <?> "constant"
+
+    let number = pfloat .>> spaces <?> "number"
+
+    let value: Parser<Expr> = constant <|> number |>> Val .>> spaces
 
     let parenExpr expr lhs : Parser<Expr> =
-        between (pchar '(') (pchar ')') (spaces >>. expr lhs .>> spaces)
+        between (pchar '(' >>. spaces) (pchar ')' >>. spaces) (expr lhs)
         <?> "parenthesized expression"
 
     let valExpr expr : Parser<Expr> =
-        attempt
-        <| parse {
+        parse {
             let! v = value <|> parenExpr expr None
 
             match! opt suffixOp with
             | Some op -> return! expr (Some(Suffix(v, op)))
             | None -> return v
-           }
+        }
+        .>> spaces
 
     let prefixExpr expr : Parser<Expr> =
-        spaces
-        >>. pipe2 prefixOp (valExpr expr <|> parenExpr expr None) (fun op v -> Prefix(op, v))
+        pipe2 prefixOp (valExpr expr <|> parenExpr expr None) (fun op v -> Prefix(op, v))
         .>> spaces
 
     let single expr =
-        spaces
-        >>. (valExpr expr
-             <|> prefixExpr expr
-             <|> parenExpr expr None)
+        valExpr expr
+        <|> prefixExpr expr
+        <|> parenExpr expr None
         .>> spaces
 
     let binaryExpr expr lhs =
@@ -157,15 +152,17 @@ module Internal =
             else
                 return! expr (Some(Binary(lhs, op, rhs)))
         }
+        .>> spaces
 
-    let rec expr: option<Expr> -> Parser<Expr> =
-        function
+    let rec expr lhs : Parser<Expr> =
+        match lhs with
         | None ->
             parse {
                 let! lhs = single expr
                 return! expr (Some lhs) <|> preturn lhs
             }
         | Some lhs -> binaryExpr expr lhs <|> preturn lhs
+        .>> spaces
 
     open MathNet.Numerics
 
@@ -226,7 +223,7 @@ module Internal =
         | Suffix (e, Factorial) -> factorial (reduceExpr e)
         | Suffix (e, DoubleFactorial) -> doubleFactorial (reduceExpr e)
 
-    let parseExpr: Parser<Expr> = expr None .>> eof
+    let parseExpr: Parser<Expr> = spaces >>. expr None .>> eof
 
 open FParsec.CharParsers
 
