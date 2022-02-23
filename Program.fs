@@ -17,7 +17,8 @@ module Core =
         dis.Logger.LogInformation $"Bot ready using configuration %A{config}"
 
         match db.Status with
-        | Some (name, activityType) -> dis.UpdateStatusAsync(DiscordActivity(name, activityType))
+        | Some (name, activityType) ->
+            dis.UpdateStatusAsync(DiscordActivity(name, activityType))
         | None -> Task.CompletedTask
 
     let clientErrored (dis: DiscordClient) (e: ClientErrorEventArgs) =
@@ -34,9 +35,15 @@ module Core =
 
         Task.CompletedTask
 
-    let commandErrored (commands: CommandsNextExtension) (e: CommandErrorEventArgs) =
+    let commandErrored
+        (commands: CommandsNextExtension)
+        (e: CommandErrorEventArgs)
+        =
         match e.Exception with
-        | :? ArgumentException -> e.Context.RespondAsync $"Invalid arguments for command **%s{e.Command.Name}**" :> Task
+        | :? ArgumentException ->
+            e.Context.RespondAsync
+                $"Invalid arguments for command **%s{e.Command.Name}**"
+            :> Task
         | :? Exceptions.CommandNotFoundException -> Task.CompletedTask
         | exn ->
             commands.Client.Logger.LogError
@@ -70,7 +77,12 @@ module Core =
             Task.CompletedTask
 
     let discordConfig =
-        DiscordConfiguration(Token = config.DiscordToken, TokenType = TokenType.Bot, AutoReconnect = true)
+        DiscordConfiguration(
+            Token = config.DiscordToken,
+            TokenType = TokenType.Bot,
+            AutoReconnect = true
+        )
+
 
     let discord = new DiscordClient(discordConfig)
 
@@ -81,7 +93,11 @@ module Core =
     discord.add_TypingStarted (AsyncEventHandler<_, _>(typingStart))
 
     let commandConfig =
-        CommandsNextConfiguration(StringPrefixes = [ config.CommandPrefix ], EnableMentionPrefix = false)
+        CommandsNextConfiguration(
+            StringPrefixes = [ config.CommandPrefix ],
+            EnableMentionPrefix = false
+        )
+
 
     let commands = discord.UseCommandsNext(commandConfig)
     commands.add_CommandErrored (AsyncEventHandler<_, _>(commandErrored))

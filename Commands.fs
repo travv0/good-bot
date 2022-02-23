@@ -27,9 +27,15 @@ type Commands() =
             s
 
     let updateDb newDb =
-        lock db (fun () ->
-            db <- newDb
-            File.WriteAllText(config.DbFile, Encode.Auto.toString (4, newDb)))
+        lock
+            db
+            (fun () ->
+                db <- newDb
+
+                File.WriteAllText(
+                    config.DbFile,
+                    Encode.Auto.toString (4, newDb)
+                ))
 
     let updateStatus (ctx: CommandContext) name activityType =
         task {
@@ -45,11 +51,11 @@ type Commands() =
 
             updateDb
                 { db with
-                    Status =
-                        if String.IsNullOrWhiteSpace(name) then
-                            None
-                        else
-                            Some(name, activityType) }
+                      Status =
+                          if String.IsNullOrWhiteSpace(name) then
+                              None
+                          else
+                              Some(name, activityType) }
 
             if String.IsNullOrWhiteSpace(name) then
                 ctx.RespondChunked("Removed status")
@@ -63,7 +69,9 @@ type Commands() =
                     | ActivityType.Competing -> "Competing in"
                     | t -> failwithf $"not implemented for %s{string t}"
 
-                ctx.RespondChunked($"Updated status to **%s{activityTypeText} %s{name}**")
+                ctx.RespondChunked(
+                    $"Updated status to **%s{activityTypeText} %s{name}**"
+                )
         }
 
     let buildDefineOutput term (definition: Definition) =
@@ -109,7 +117,11 @@ type Commands() =
                 )
 
                 Header "x-rapidapi-key" apiKey
-                Header "x-rapidapi-host" "mashape-community-urban-dictionary.p.rapidapi.com"
+
+                Header
+                    "x-rapidapi-host"
+                    "mashape-community-urban-dictionary.p.rapidapi.com"
+
                 Header "useQueryString" "true"
             }
             |> Response.toText
@@ -121,7 +133,8 @@ type Commands() =
             |> Result.bind (Decode.fromString Definition.UrbanDecoder)
 
         match urbanResponse with
-        | Ok defs when defs.Definitions.Length > 0 -> buildDefineOutput term defs |> Some
+        | Ok defs when defs.Definitions.Length > 0 ->
+            buildDefineOutput term defs |> Some
         | Ok _ -> None
         | Error e ->
             logger.LogDebug $"%s{e}"
@@ -151,7 +164,10 @@ type Commands() =
             else
                 match getOutput ctx.Client.Logger term with
                 | Some output -> ctx.RespondChunked(output)
-                | None -> ctx.RespondChunked("No definition found for **" + term + "**")
+                | None ->
+                    ctx.RespondChunked(
+                        "No definition found for **" + term + "**"
+                    )
         }
 
     let lox (ctx: CommandContext) dumpAst program =
@@ -167,7 +183,7 @@ type Commands() =
             elif exitCode = 0 then
                 let trimmedOk = trimOutput 1992 ok
 
-                if (String.IsNullOrWhiteSpace(trimmedOk)) then
+                if String.IsNullOrWhiteSpace(trimmedOk) then
                     ctx.RespondChunked($"```\n<No output>\n```")
                 else
                     ctx.RespondChunked($"```\n%s{trimmedOk}\n```")
@@ -191,12 +207,13 @@ type Commands() =
             |> Arguments.toList
             |> CreateProcess.fromRawCommand "flox"
             |> CreateProcess.redirectOutput
-            |> CreateProcess.addOnStartedEx (fun p ->
-                Thread.Sleep(TimeSpan.FromSeconds(3))
+            |> CreateProcess.addOnStartedEx
+                (fun p ->
+                    Thread.Sleep(TimeSpan.FromSeconds(3))
 
-                if not p.Process.HasExited then
-                    p.Process.Kill()
-                    ctx.RespondChunked("```\n<Timeout>\n```"))
+                    if not p.Process.HasExited then
+                        p.Process.Kill()
+                        ctx.RespondChunked("```\n<Timeout>\n```"))
             |> Proc.run
             |> loxOutput
         }
@@ -216,14 +233,24 @@ type Commands() =
 
     [<Command("define");
       Description("Look up the definition of a word or phrase, using Urban Dictionary as a backup.")>]
-    member _.DefineAsync(ctx, [<Description("The word or phrase to look up."); RemainingText>] term) : Task =
+    member _.DefineAsync
+        (
+            ctx,
+            [<Description("The word or phrase to look up."); RemainingText>] term
+        ) : Task =
         define ctx getDefineOutput term
 
-    [<Command("urban"); Description("Look up the definition of a word or phrase on Urban Dictionary.")>]
-    member _.UrbanAsync(ctx, [<Description("The word or phrase to look up."); RemainingText>] term) : Task =
+    [<Command("urban");
+      Description("Look up the definition of a word or phrase on Urban Dictionary.")>]
+    member _.UrbanAsync
+        (
+            ctx,
+            [<Description("The word or phrase to look up."); RemainingText>] term
+        ) : Task =
         define ctx getUrbanOutput term
 
-    [<Command("add"); Description("Add a response to be randomly selected when the bot replies after being pinged.")>]
+    [<Command("add");
+      Description("Add a response to be randomly selected when the bot replies after being pinged.")>]
     member _.AddResponseAsync
         (
             ctx: CommandContext,
@@ -235,11 +262,15 @@ type Commands() =
             if String.IsNullOrWhiteSpace(response) then
                 ctx.RespondChunked("Missing response to add")
             else
-                updateDb { db with Responses = response :: db.Responses |> List.distinct }
+                updateDb
+                    { db with
+                          Responses = response :: db.Responses |> List.distinct }
+
                 ctx.RespondChunked($"Added **%s{response}** to responses")
         }
 
-    [<Command("remove"); Description("Remove a response from the bot's response pool.")>]
+    [<Command("remove");
+      Description("Remove a response from the bot's response pool.")>]
     member _.RemoveResponseAsync
         (
             ctx: CommandContext,
@@ -253,7 +284,11 @@ type Commands() =
             elif not (List.contains response db.Responses) then
                 ctx.RespondChunked($"Response **%s{response}** not found")
             else
-                updateDb { db with Responses = db.Responses |> List.filter ((<>) response) }
+                updateDb
+                    { db with
+                          Responses =
+                              db.Responses |> List.filter ((<>) response) }
+
                 ctx.RespondChunked($"Removed **%s{response}** from responses")
         }
 
@@ -265,22 +300,41 @@ type Commands() =
         }
 
     [<Command("playing"); Description("Set bot's activity to Playing.")>]
-    member _.PlayingAsync(ctx, [<Description("What's the bot playing?"); RemainingText>] name) : Task =
+    member _.PlayingAsync
+        (
+            ctx,
+            [<Description("What's the bot playing?"); RemainingText>] name
+        ) : Task =
         updateStatus ctx name ActivityType.Playing
 
     [<Command("watching"); Description("Set bot's activity to Watching.")>]
-    member _.WatchingAsync(ctx, [<Description("What's the bot watching?"); RemainingText>] name) : Task =
+    member _.WatchingAsync
+        (
+            ctx,
+            [<Description("What's the bot watching?"); RemainingText>] name
+        ) : Task =
         updateStatus ctx name ActivityType.Watching
 
-    [<Command("listeningto"); Description("Set bot's activity to Listening To.")>]
-    member _.ListeningToAsync(ctx, [<Description("What's the bot listening to?"); RemainingText>] name) : Task =
+    [<Command("listeningto");
+      Description("Set bot's activity to Listening To.")>]
+    member _.ListeningToAsync
+        (
+            ctx,
+            [<Description("What's the bot listening to?"); RemainingText>] name
+        ) : Task =
         updateStatus ctx name ActivityType.ListeningTo
 
-    [<Command("competingin"); Description("Set bot's activity to Competing In.")>]
-    member _.CompetingInAsync(ctx, [<Description("What's the bot competing in?"); RemainingText>] name) : Task =
+    [<Command("competingin");
+      Description("Set bot's activity to Competing In.")>]
+    member _.CompetingInAsync
+        (
+            ctx,
+            [<Description("What's the bot competing in?"); RemainingText>] name
+        ) : Task =
         updateStatus ctx name ActivityType.Competing
 
-    [<Command("meanness"); Description("Set bot's meanness level from 0 to 10 or view current meanness.")>]
+    [<Command("meanness");
+      Description("Set bot's meanness level from 0 to 10 or view current meanness.")>]
     member _.MeannessAsync
         (
             ctx: CommandContext,
@@ -301,7 +355,11 @@ type Commands() =
         }
 
     [<Command("calc"); Description("Calculate the result of an expression.")>]
-    member _.CalcAsync(ctx: CommandContext, [<RemainingText; Description("The expression to evaluate.")>] expr) : Task =
+    member _.CalcAsync
+        (
+            ctx: CommandContext,
+            [<RemainingText; Description("The expression to evaluate.")>] expr
+        ) : Task =
         task {
             do! ctx.TriggerTypingAsync()
 
@@ -311,7 +369,11 @@ type Commands() =
         }
 
     [<Command("lox"); Description("View the result of a Lox program.")>]
-    member _.LoxAsync(ctx: CommandContext, [<RemainingText; Description("The lox program to run.")>] program) : Task =
+    member _.LoxAsync
+        (
+            ctx: CommandContext,
+            [<RemainingText; Description("The lox program to run.")>] program
+        ) : Task =
         lox ctx false program
 
     [<Command("loxast"); Description("View the syntax tree of a Lox program.")>]

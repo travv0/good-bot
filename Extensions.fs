@@ -2,7 +2,6 @@ module Extensions
 
 open DSharpPlus.CommandsNext
 open DSharpPlus.Entities
-open System.Threading.Tasks
 open System
 
 type CommandContext with

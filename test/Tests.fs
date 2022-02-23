@@ -28,8 +28,18 @@ module Result =
 
 [<Fact>]
 let ``calc evals correctly`` () =
-    Assert.InRange(Calculator.eval "9 * 18%" |> Result.unwrap, 1.62 - 0.01, 1.62 + 0.01)
-    Assert.InRange(Calculator.eval "18%" |> Result.unwrap, 0.18 - 0.001, 0.18 + 0.001)
+    Assert.InRange(
+        Calculator.eval "9 * 18%" |> Result.unwrap,
+        1.62 - 0.01,
+        1.62 + 0.01
+    )
+
+    Assert.InRange(
+        Calculator.eval "18%" |> Result.unwrap,
+        0.18 - 0.001,
+        0.18 + 0.001
+    )
+
     Assert.Equal(12., Calculator.eval "3 * sqrt(2 ^ 4)" |> Result.unwrap)
 
     Assert.InRange(
@@ -54,16 +64,34 @@ let ``calc evals correctly`` () =
     Assert.True(Calculator.eval "abs - 6 % + 5!" |> Result.isError)
     Assert.True(Calculator.eval "abs (- 6) % + 5!" |> Result.isOk)
     Assert.True(Calculator.eval "abs -6 % + 5!" |> Result.isOk)
-    Assert.InRange(Calculator.eval "abs 6 % + 5!" |> Result.unwrap, 120.06 - 0.01, 120.06 + 0.01)
-    Assert.Equal(Calculator.eval "sin 5%" |> Result.unwrap, Calculator.eval "sin (5%)" |> Result.unwrap)
-    Assert.NotEqual(Calculator.eval "sin 5%" |> Result.unwrap, Calculator.eval "(sin 5)%" |> Result.unwrap)
+
+    Assert.InRange(
+        Calculator.eval "abs 6 % + 5!" |> Result.unwrap,
+        120.06 - 0.01,
+        120.06 + 0.01
+    )
+
+    Assert.Equal(
+        Calculator.eval "sin 5%" |> Result.unwrap,
+        Calculator.eval "sin (5%)" |> Result.unwrap
+    )
+
+    Assert.NotEqual(
+        Calculator.eval "sin 5%" |> Result.unwrap,
+        Calculator.eval "(sin 5)%" |> Result.unwrap
+    )
+
     Assert.Equal(1., Calculator.eval "- 2 + 3" |> Result.unwrap)
     Assert.Equal(-1., Calculator.eval "- 2 + 1" |> Result.unwrap)
     Assert.True(Calculator.eval "sqrt sqrt 4" |> Result.isError)
     Assert.True(Calculator.eval "sqrt (sqrt 4)" |> Result.isOk)
     Assert.True(Calculator.eval "1 + sine" |> Result.isError)
     Assert.True(Calculator.eval "1 + sin e" |> Result.isOk)
-    Assert.Equal(Calculator.eval "1 + sin e" |> Result.unwrap, Calculator.eval "1 + sin(e)" |> Result.unwrap)
+
+    Assert.Equal(
+        Calculator.eval "1 + sin e" |> Result.unwrap,
+        Calculator.eval "1 + sin(e)" |> Result.unwrap
+    )
 
 [<Fact>]
 let ``calc show helpful parse errors`` () =
@@ -223,21 +251,24 @@ for (var i = 0; i < 10; i = i + 1) {
 
     Assert.Equal(
         "for (var i = 0; i < 10; i = i + 1) { print \"``\"; }",
-        Util.parseCodeBlockFromMessage "`for (var i = 0; i < 10; i = i + 1) { print \"``\"; }`"
+        Util.parseCodeBlockFromMessage
+            "`for (var i = 0; i < 10; i = i + 1) { print \"``\"; }`"
         |> Result.unwrap,
         ignoreLineEndingDifferences = true
     )
 
     Assert.Equal(
         "for (var i = 0; i < 10; i = i + 1) { print \"",
-        Util.parseCodeBlockFromMessage "`for (var i = 0; i < 10; i = i + 1) { print \"`\"; }`"
+        Util.parseCodeBlockFromMessage
+            "`for (var i = 0; i < 10; i = i + 1) { print \"`\"; }`"
         |> Result.unwrap,
         ignoreLineEndingDifferences = true
     )
 
     Assert.Equal(
         "for (var i = 0; i < 10; i = i + 1) { print \"`\"; }",
-        Util.parseCodeBlockFromMessage "``for (var i = 0; i < 10; i = i + 1) { print \"`\"; }``"
+        Util.parseCodeBlockFromMessage
+            "``for (var i = 0; i < 10; i = i + 1) { print \"`\"; }``"
         |> Result.unwrap,
         ignoreLineEndingDifferences = true
     )

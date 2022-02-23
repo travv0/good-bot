@@ -126,7 +126,10 @@ module Internal =
         .>> spaces
 
     let prefixExpr expr : Parser<Expr> =
-        pipe2 prefixOp (valExpr expr <|> parenExpr expr None) (fun op v -> Prefix(op, v))
+        pipe2
+            prefixOp
+            (valExpr expr <|> parenExpr expr None)
+            (fun op v -> Prefix(op, v))
         .>> spaces
 
     let single expr =
@@ -217,7 +220,8 @@ module Internal =
         | Prefix (Fact, e) -> factorial (reduceExpr e)
         | Prefix (RandFloat, e) -> randf (reduceExpr e)
         | Prefix (RandInt, e) -> randi (reduceExpr e)
-        | Prefix (Rand, e) -> let n = reduceExpr e in if n = round n then randi n else randf n
+        | Prefix (Rand, e) ->
+            let n = reduceExpr e in if n = round n then randi n else randf n
 
         | Suffix (e, Percent) -> (reduceExpr e) * 0.01
         | Suffix (e, Factorial) -> factorial (reduceExpr e)

@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "good-bot", "good-bot.fsproj", "{56F2B6F8-87AD-4D09-B46E-CADC4C987B38}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "test", "test\test.fsproj", "{CC65A605-6C0D-4948-909E-F292CFF3DC9F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{56F2B6F8-87AD-4D09-B46E-CADC4C987B38}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{56F2B6F8-87AD-4D09-B46E-CADC4C987B38}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{56F2B6F8-87AD-4D09-B46E-CADC4C987B38}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{56F2B6F8-87AD-4D09-B46E-CADC4C987B38}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CC65A605-6C0D-4948-909E-F292CFF3DC9F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CC65A605-6C0D-4948-909E-F292CFF3DC9F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CC65A605-6C0D-4948-909E-F292CFF3DC9F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CC65A605-6C0D-4948-909E-F292CFF3DC9F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
