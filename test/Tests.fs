@@ -190,13 +190,13 @@ for (var i = 0; i < 10; i = i + 1) {
     Assert.Equal(
         "
 for (var i = 0; i < 10; i = i + 1) {
-  print \"``\";
+  print \"`\";
 }
 ",
         Util.parseCodeBlockFromMessage
             "```lox
 for (var i = 0; i < 10; i = i + 1) {
-  print \"``\";
+  print \"`\";
 }
 ```"
         |> Result.unwrap,

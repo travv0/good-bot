@@ -1,11 +1,10 @@
 [<RequireQualifiedAccess>]
 module Calculator
 
+open FParsec
 open System
 
 module Internal =
-    open FParsec
-
     type BinaryOp =
         | Plus
         | Minus
@@ -229,9 +228,7 @@ module Internal =
 
     let parseExpr: Parser<Expr> = spaces >>. expr None .>> eof
 
-open FParsec.CharParsers
-
 let eval s : Result<float, string> =
     match run Internal.parseExpr s with
-    | Success (e, _, _) -> Ok(Internal.reduceExpr e)
-    | Failure (e, _, _) -> Error e
+    | Success (e, _, _) -> Core.Ok(Internal.reduceExpr e)
+    | Failure (e, _, _) -> Core.Error e
