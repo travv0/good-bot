@@ -110,13 +110,13 @@ module Internal =
 
     let value: Parser<Expr> = constant <|> number |>> Val .>> spaces
 
-    let parenExpr expr lhs : Parser<Expr> =
-        between (pchar '(' >>. spaces) (pchar ')' >>. spaces) (expr lhs)
+    let parenExpr expr : Parser<Expr> =
+        between (pchar '(' >>. spaces) (pchar ')' >>. spaces) (expr None)
         <?> "parenthesized expression"
 
     let valExpr expr : Parser<Expr> =
         parse {
-            let! v = value <|> parenExpr expr None
+            let! v = value <|> parenExpr expr
 
             match! opt suffixOp with
             | Some op -> return! expr (Some(Suffix(v, op)))
@@ -127,14 +127,14 @@ module Internal =
     let prefixExpr expr : Parser<Expr> =
         pipe2
             prefixOp
-            (valExpr expr <|> parenExpr expr None)
+            (valExpr expr <|> parenExpr expr)
             (fun op v -> Prefix(op, v))
         .>> spaces
 
     let single expr =
         valExpr expr
         <|> prefixExpr expr
-        <|> parenExpr expr None
+        <|> parenExpr expr
         .>> spaces
 
     let binaryExpr expr lhs =

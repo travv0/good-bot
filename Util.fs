@@ -27,8 +27,8 @@ module private CodeBlockParsers =
 
     let codeBlockParser =
         choice [ between blockOpen blockClose blockContents
-                 between (pstring "``") (pstring "``") inlineDoubleContents
-                 between (pchar '`') (pchar '`') inlineSingleContents ]
+                 between doubleBacktick doubleBacktick inlineDoubleContents
+                 between singleBacktick singleBacktick inlineSingleContents ]
 
 open CodeBlockParsers
 
