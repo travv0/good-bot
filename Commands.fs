@@ -69,6 +69,18 @@ type Commands() =
                 )
         }
 
+    let addAutoReply (ctx: CommandContext) (user: DiscordUser) reply =
+        updateDb
+            { db with AutoReplies = db.AutoReplies |> Map.add user.Id reply }
+
+        ctx.RespondChunked(
+            $"Will now reply to **%s{user.Username}** with \"%s{reply}\""
+        )
+
+    let removeAutoReply (ctx: CommandContext) (user: DiscordUser) =
+        updateDb { db with AutoReplies = db.AutoReplies |> Map.remove user.Id }
+        ctx.RespondChunked($"Removed auto-reply for user **%s{user.Username}**")
+
     let buildDefineOutput term (definition: Definition) =
         let definitions =
             match definition.Definitions with
@@ -325,6 +337,31 @@ type Commands() =
             [<Description("What's the bot competing in?"); RemainingText>] name
         ) : Task =
         updateStatus ctx name ActivityType.Competing
+
+    [<Command("addautoreply");
+      Description("Set a message for the bot to automatically reply with whenever a user sends a message.")>]
+    member _.AutoReply
+        (
+            ctx: CommandContext,
+            [<Description("The user to reply to.")>] user: DiscordUser,
+            reply
+        ) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
+            addAutoReply ctx user reply
+        }
+
+    [<Command("removeautoreply");
+      Description("Remove auto-reply for given user.")>]
+    member _.AutoReply
+        (
+            ctx: CommandContext,
+            [<Description("The user to remove reply for.")>] user: DiscordUser
+        ) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
+            removeAutoReply ctx user
+        }
 
     [<Command("meanness");
       Description("Set bot's meanness level from 0 to 10 or view current meanness.")>]

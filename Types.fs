@@ -6,7 +6,8 @@ open Thoth.Json.Net
 type Db =
     { Responses: string list
       Status: (string * ActivityType) option
-      Meanness: int }
+      Meanness: int
+      AutoReplies: Map<uint64, string> }
 
     static member Decoder =
         Decode.object (fun get ->
@@ -19,7 +20,14 @@ type Db =
               Meanness =
                 Decode.int
                 |> get.Optional.Field "Meanness"
-                |> Option.defaultValue 5 })
+                |> Option.defaultValue 5
+              AutoReplies =
+                Decode.dict Decode.string
+                |> get.Optional.Field "AutoResponses"
+                |> Option.defaultValue Map.empty
+                |> Map.toList
+                |> List.map (fun (k, v) -> uint64 k, v)
+                |> Map.ofList })
 
 
 type Config =

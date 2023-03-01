@@ -23,7 +23,8 @@ let mutable db =
     let defaultDb =
         { Responses = [ "hi" ]
           Status = None
-          Meanness = 5 }
+          Meanness = 5
+          AutoReplies = Map.empty }
 
     try
         match

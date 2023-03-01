@@ -59,9 +59,10 @@ module Core =
             let responseNum =
                 rand.Next(db.Responses.Length)
 
-            e.Message.RespondAsync(db.Responses.[responseNum]) :> Task
-        elif e.Author.IsCarl then
-            e.Message.RespondAsync("Carl is a cuck") :> Task
+            e.Message.RespondAsync(db.Responses[responseNum]) :> Task
+        elif db.AutoReplies.ContainsKey(e.Message.Author.Id) then
+            e.Message.RespondAsync(db.AutoReplies[e.Message.Author.Id])
+            :> Task
         else
             Task.CompletedTask
 
