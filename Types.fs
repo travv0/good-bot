@@ -22,10 +22,9 @@ type Db =
                 |> get.Optional.Field "Meanness"
                 |> Option.defaultValue 5
               AutoReplies =
-                Decode.dict Decode.string
-                |> get.Optional.Field "AutoResponses"
-                |> Option.defaultValue Map.empty
-                |> Map.toList
+                Decode.list (Decode.tuple2 Decode.string Decode.string)
+                |> get.Optional.Field "AutoReplies"
+                |> Option.defaultValue []
                 |> List.map (fun (k, v) -> uint64 k, v)
                 |> Map.ofList })
 
