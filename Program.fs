@@ -61,8 +61,7 @@ module Core =
 
             e.Message.RespondAsync(db.Responses[responseNum]) :> Task
         elif db.AutoReplies.ContainsKey(e.Message.Author.Id) then
-            e.Message.RespondAsync(db.AutoReplies[e.Message.Author.Id])
-            :> Task
+            e.Message.RespondAsync(db.AutoReplies[e.Message.Author.Id]) :> Task
         else
             Task.CompletedTask
 
@@ -83,9 +82,9 @@ module Core =
         DiscordConfiguration(
             Token = config.DiscordToken,
             TokenType = TokenType.Bot,
+            Intents = DiscordIntents.All,
             AutoReconnect = true
         )
-
 
     let discord =
         new DiscordClient(discordConfig)
@@ -101,7 +100,6 @@ module Core =
             StringPrefixes = [ config.CommandPrefix ],
             EnableMentionPrefix = false
         )
-
 
     let commands =
         discord.UseCommandsNext(commandConfig)

@@ -30,7 +30,14 @@ type Commands() =
         lock db (fun () ->
             db <- newDb
 
-            File.WriteAllText(config.DbFile, Encode.Auto.toString (4, newDb)))
+            File.WriteAllText(
+                config.DbFile,
+                Encode.Auto.toString (
+                    4,
+                    newDb,
+                    extra = (Extra.empty |> Extra.withUInt64)
+                )
+            ))
 
     let updateStatus (ctx: CommandContext) name activityType =
         task {
