@@ -108,7 +108,8 @@ module Internal =
 
     let number = pfloat .>> spaces <?> "number"
 
-    let value: Parser<Expr> = constant <|> number |>> Val .>> spaces
+    let value: Parser<Expr> =
+        constant <|> number |>> Val .>> spaces
 
     let parenExpr expr : Parser<Expr> =
         between (pchar '(' >>. spaces) (pchar ')' >>. spaces) (expr None)
@@ -125,10 +126,8 @@ module Internal =
         .>> spaces
 
     let prefixExpr expr : Parser<Expr> =
-        pipe2
-            prefixOp
-            (valExpr expr <|> parenExpr expr)
-            (fun op v -> Prefix(op, v))
+        pipe2 prefixOp (valExpr expr <|> parenExpr expr) (fun op v ->
+            Prefix(op, v))
         .>> spaces
 
     let single expr =
@@ -226,7 +225,8 @@ module Internal =
         | Suffix (e, Factorial) -> factorial (reduceExpr e)
         | Suffix (e, DoubleFactorial) -> doubleFactorial (reduceExpr e)
 
-    let parseExpr: Parser<Expr> = spaces >>. expr None .>> eof
+    let parseExpr: Parser<Expr> =
+        spaces >>. expr None .>> eof
 
 let eval s : Result<float, string> =
     match run Internal.parseExpr s with

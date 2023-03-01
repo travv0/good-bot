@@ -5,13 +5,16 @@ open FParsec
 type Parser<'a> = Parser<'a, unit>
 
 module private CodeBlockParsers =
-    let blockOpen = pstring "```" .>> skipMany letter
+    let blockOpen =
+        pstring "```" .>> skipMany letter
+
     let blockClose = pstring "```"
 
     let doubleBacktick: Parser<string> =
         pstring "``" .>>? notFollowedBy (pchar '`')
 
-    let singleBacktick: Parser<char> = pchar '`' .>>? notFollowedBy (pchar '`')
+    let singleBacktick: Parser<char> =
+        pchar '`' .>>? notFollowedBy (pchar '`')
 
     let blockContents =
         many1Chars (

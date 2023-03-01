@@ -10,7 +10,8 @@ type CommandContext with
             ctx.RespondAsync(String(message)).Result |> ignore
 
 type DiscordUser with
-    member user.IsCarl = user.Id = 235148962103951360UL
+    member user.IsCarl =
+        user.Id = 235148962103951360UL
 
 [<RequireQualifiedAccess>]
 module String =

@@ -27,15 +27,10 @@ type Commands() =
             s
 
     let updateDb newDb =
-        lock
-            db
-            (fun () ->
-                db <- newDb
+        lock db (fun () ->
+            db <- newDb
 
-                File.WriteAllText(
-                    config.DbFile,
-                    Encode.Auto.toString (4, newDb)
-                ))
+            File.WriteAllText(config.DbFile, Encode.Auto.toString (4, newDb)))
 
     let updateStatus (ctx: CommandContext) name activityType =
         task {
@@ -51,11 +46,11 @@ type Commands() =
 
             updateDb
                 { db with
-                      Status =
-                          if String.IsNullOrWhiteSpace(name) then
-                              None
-                          else
-                              Some(name, activityType) }
+                    Status =
+                        if String.IsNullOrWhiteSpace(name) then
+                            None
+                        else
+                            Some(name, activityType) }
 
             if String.IsNullOrWhiteSpace(name) then
                 ctx.RespondChunked("Removed status")
@@ -207,13 +202,12 @@ type Commands() =
             |> Arguments.toList
             |> CreateProcess.fromRawCommand "flox"
             |> CreateProcess.redirectOutput
-            |> CreateProcess.addOnStartedEx
-                (fun p ->
-                    Thread.Sleep(TimeSpan.FromSeconds(3))
+            |> CreateProcess.addOnStartedEx (fun p ->
+                Thread.Sleep(TimeSpan.FromSeconds(3))
 
-                    if not p.Process.HasExited then
-                        p.Process.Kill()
-                        ctx.RespondChunked("```\n<Timeout>\n```"))
+                if not p.Process.HasExited then
+                    p.Process.Kill()
+                    ctx.RespondChunked("```\n<Timeout>\n```"))
             |> Proc.run
             |> loxOutput
         }
@@ -264,7 +258,7 @@ type Commands() =
             else
                 updateDb
                     { db with
-                          Responses = response :: db.Responses |> List.distinct }
+                        Responses = response :: db.Responses |> List.distinct }
 
                 ctx.RespondChunked($"Added **%s{response}** to responses")
         }
@@ -286,8 +280,7 @@ type Commands() =
             else
                 updateDb
                     { db with
-                          Responses =
-                              db.Responses |> List.filter ((<>) response) }
+                        Responses = db.Responses |> List.filter ((<>) response) }
 
                 ctx.RespondChunked($"Removed **%s{response}** from responses")
         }

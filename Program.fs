@@ -56,7 +56,9 @@ module Core =
            && (Seq.contains dis.CurrentUser e.MentionedUsers
                || e.Message.Content.Contains("@everyone")
                || e.Message.Content.Contains("@here")) then
-            let responseNum = rand.Next(db.Responses.Length)
+            let responseNum =
+                rand.Next(db.Responses.Length)
+
             e.Message.RespondAsync(db.Responses.[responseNum]) :> Task
         elif e.Author.IsCarl then
             e.Message.RespondAsync("Carl is a cuck") :> Task
@@ -84,7 +86,8 @@ module Core =
         )
 
 
-    let discord = new DiscordClient(discordConfig)
+    let discord =
+        new DiscordClient(discordConfig)
 
     discord.add_SocketErrored (AsyncEventHandler<_, _>(socketErrored))
     discord.add_ClientErrored (AsyncEventHandler<_, _>(clientErrored))
@@ -99,7 +102,9 @@ module Core =
         )
 
 
-    let commands = discord.UseCommandsNext(commandConfig)
+    let commands =
+        discord.UseCommandsNext(commandConfig)
+
     commands.add_CommandErrored (AsyncEventHandler<_, _>(commandErrored))
     commands.RegisterCommands<Commands>()
 
