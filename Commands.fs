@@ -342,24 +342,47 @@ type Commands() =
         ) : Task =
         updateStatus ctx name ActivityType.Competing
 
-    [<Command("setautoreply");
-      Aliases("addautoreply");
-      Description("Set a message for the bot to automatically reply with whenever a user sends a message.")>]
-    member _.SetAutoReply
+    [<Command("autoreply");
+      Description("Set a message for the bot to automatically reply with whenever a user sends a message, or view that message for a given user.")>]
+    member _.AutoReply
         (
             ctx: CommandContext,
             [<Description("The user to reply to.")>] user: DiscordUser,
-            reply
+            [<Description("The message to reply with.")>] reply
         ) : Task =
         task {
             do! ctx.TriggerTypingAsync()
 
-            updateDb
-                { db with AutoReplies = db.AutoReplies |> Map.add user.Id reply }
+            if user.Id = ctx.Client.CurrentUser.Id then
+                ctx.RespondChunked("I can't set an auto-reply for myself")
+            else
+                updateDb
+                    { db with
+                        AutoReplies = db.AutoReplies |> Map.add user.Id reply }
 
-            ctx.RespondChunked(
-                $"Will now reply to **%s{user.Username}** with \"%s{reply}\""
-            )
+                ctx.RespondChunked(
+                    $"Will now reply to **%s{user.Username}** with \"%s{reply}\""
+                )
+        }
+
+    [<Command("autoreply")>]
+    member _.AutoReply
+        (
+            ctx: CommandContext,
+            [<Description("Which user's auto-reply to show.")>] user: DiscordUser
+        ) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
+
+            match db.AutoReplies |> Map.tryFind user.Id with
+            | None ->
+                ctx.RespondChunked(
+                    $"No auto-reply set for user **%s{user.Username}**"
+                )
+            | Some reply ->
+                ctx.RespondChunked(
+                    $"Will reply to **%s{user.Username}** with \"%s{reply}\""
+                )
         }
 
     [<Command("removeautoreply");
@@ -381,33 +404,13 @@ type Commands() =
             )
         }
 
-    [<Command("autoreply"); Description("Show a given user's auto-reply.")>]
-    member _.AutoReply
-        (
-            ctx: CommandContext,
-            [<Description("Which user's auto-reply to show.")>] user: DiscordUser
-        ) : Task =
-        task {
-            do! ctx.TriggerTypingAsync()
-
-            match db.AutoReplies |> Map.tryFind user.Id with
-            | None ->
-                ctx.RespondChunked(
-                    $"No auto-reply set for user **%s{user.Username}**"
-                )
-            | Some reply ->
-                ctx.RespondChunked(
-                    $"Will reply to **%s{user.Username}** with \"%s{reply}\""
-                )
-        }
-
     [<Command("autoreplyrate");
       Description("Set the percentage of messages that should be replied to for the given user.")>]
     member _.AutoReplyRate
         (
             ctx: CommandContext,
             [<Description("The user to set reply rate for.")>] user: DiscordUser,
-            percentage: decimal
+            [<Description("The percentage of messages to reply to.")>] percentage: decimal
         ) : Task =
         task {
             do! ctx.TriggerTypingAsync()
