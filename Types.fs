@@ -7,7 +7,8 @@ type Db =
     { Responses: string list
       Status: (string * ActivityType) option
       Meanness: int
-      AutoReplies: Map<uint64, string> }
+      AutoReplies: Map<uint64, string>
+      LastResponse: string option }
 
     static member Decoder =
         Decode.object (fun get ->
@@ -26,7 +27,8 @@ type Db =
                 |> get.Optional.Field "AutoReplies"
                 |> Option.defaultValue []
                 |> List.map (fun (k, v) -> uint64 k, v)
-                |> Map.ofList })
+                |> Map.ofList
+              LastResponse = Decode.string |> get.Optional.Field "LastResponse" })
 
 
 type Config =

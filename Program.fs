@@ -4,7 +4,6 @@ open DSharpPlus.Entities
 open DSharpPlus.EventArgs
 open Data
 open Emzi0767.Utilities
-open Extensions
 open GoodBot
 open Microsoft.Extensions.Logging
 open System
@@ -59,7 +58,10 @@ module Core =
             let responseNum =
                 rand.Next(db.Responses.Length)
 
-            e.Message.RespondAsync(db.Responses[responseNum]) :> Task
+            let response = db.Responses[responseNum]
+            updateDb { db with LastResponse = Some response }
+            e.Message.RespondAsync(response) :> Task
+
         elif db.AutoReplies.ContainsKey(e.Message.Author.Id) then
             e.Message.RespondAsync(db.AutoReplies[e.Message.Author.Id]) :> Task
         else

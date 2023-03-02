@@ -26,19 +26,6 @@ type Commands() =
         else
             s
 
-    let updateDb newDb =
-        lock db (fun () ->
-            db <- newDb
-
-            File.WriteAllText(
-                config.DbFile,
-                Encode.Auto.toString (
-                    4,
-                    newDb,
-                    extra = (Extra.empty |> Extra.withUInt64)
-                )
-            ))
-
     let updateStatus (ctx: CommandContext) name activityType =
         task {
             do! ctx.TriggerTypingAsync()
@@ -304,6 +291,22 @@ type Commands() =
                 ctx.RespondChunked($"Removed **%s{response}** from responses")
         }
 
+    [<Command("removelast");
+      Description("Remove the bot's last response from the response pool.")>]
+    member _.RemoveLastResponseAsync(ctx: CommandContext) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
+
+            match db.LastResponse with
+            | None -> ctx.RespondChunked("No response to remove")
+            | Some response ->
+                updateDb
+                    { db with
+                        Responses = db.Responses |> List.filter ((<>) response) }
+
+                ctx.RespondChunked($"Removed **%s{response}** from responses")
+        }
+
     [<Command("list"); Description("List all responses in the response pool.")>]
     member _.ListResponsesAsync(ctx: CommandContext) : Task =
         task {
@@ -347,7 +350,7 @@ type Commands() =
 
     [<Command("addautoreply");
       Description("Set a message for the bot to automatically reply with whenever a user sends a message.")>]
-    member _.AutoReply
+    member _.AddAutoReply
         (
             ctx: CommandContext,
             [<Description("The user to reply to.")>] user: DiscordUser,
@@ -360,7 +363,7 @@ type Commands() =
 
     [<Command("removeautoreply");
       Description("Remove auto-reply for given user.")>]
-    member _.AutoReply
+    member _.RemoveAutoReply
         (
             ctx: CommandContext,
             [<Description("The user to remove reply for.")>] user: DiscordUser

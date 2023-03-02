@@ -24,7 +24,8 @@ let mutable db =
         { Responses = [ "hi" ]
           Status = None
           Meanness = 5
-          AutoReplies = Map.empty }
+          AutoReplies = Map.empty
+          LastResponse = None }
 
     try
         match
@@ -39,3 +40,16 @@ let mutable db =
     | e ->
         printfn $"%s{e.Message}"
         defaultDb
+
+let updateDb newDb =
+    lock db (fun () ->
+        db <- newDb
+
+        File.WriteAllText(
+            config.DbFile,
+            Encode.Auto.toString (
+                4,
+                newDb,
+                extra = (Extra.empty |> Extra.withUInt64)
+            )
+        ))
