@@ -63,7 +63,17 @@ module Core =
             e.Message.RespondAsync(response) :> Task
 
         elif db.AutoReplies.ContainsKey(e.Message.Author.Id) then
-            e.Message.RespondAsync(db.AutoReplies[e.Message.Author.Id]) :> Task
+            let replyRate =
+                db.AutoReplyRates
+                |> Map.tryFind e.Message.Author.Id
+                |> Option.defaultValue 100M
+
+            if rand.NextDouble() * 100.0 < double replyRate then
+                e.Message.RespondAsync(db.AutoReplies[e.Message.Author.Id])
+                :> Task
+            else
+                Task.CompletedTask
+
         else
             Task.CompletedTask
 

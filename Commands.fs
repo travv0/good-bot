@@ -63,18 +63,6 @@ type Commands() =
                 )
         }
 
-    let addAutoReply (ctx: CommandContext) (user: DiscordUser) reply =
-        updateDb
-            { db with AutoReplies = db.AutoReplies |> Map.add user.Id reply }
-
-        ctx.RespondChunked(
-            $"Will now reply to **%s{user.Username}** with \"%s{reply}\""
-        )
-
-    let removeAutoReply (ctx: CommandContext) (user: DiscordUser) =
-        updateDb { db with AutoReplies = db.AutoReplies |> Map.remove user.Id }
-        ctx.RespondChunked($"Removed auto-reply for user **%s{user.Username}**")
-
     let buildDefineOutput term (definition: Definition) =
         let definitions =
             match definition.Definitions with
@@ -354,9 +342,10 @@ type Commands() =
         ) : Task =
         updateStatus ctx name ActivityType.Competing
 
-    [<Command("addautoreply");
+    [<Command("setautoreply");
+      Aliases("addautoreply");
       Description("Set a message for the bot to automatically reply with whenever a user sends a message.")>]
-    member _.AddAutoReply
+    member _.SetAutoReply
         (
             ctx: CommandContext,
             [<Description("The user to reply to.")>] user: DiscordUser,
@@ -364,10 +353,17 @@ type Commands() =
         ) : Task =
         task {
             do! ctx.TriggerTypingAsync()
-            addAutoReply ctx user reply
+
+            updateDb
+                { db with AutoReplies = db.AutoReplies |> Map.add user.Id reply }
+
+            ctx.RespondChunked(
+                $"Will now reply to **%s{user.Username}** with \"%s{reply}\""
+            )
         }
 
     [<Command("removeautoreply");
+      Aliases("unsetautoreply");
       Description("Remove auto-reply for given user.")>]
     member _.RemoveAutoReply
         (
@@ -376,7 +372,73 @@ type Commands() =
         ) : Task =
         task {
             do! ctx.TriggerTypingAsync()
-            removeAutoReply ctx user
+
+            updateDb
+                { db with AutoReplies = db.AutoReplies |> Map.remove user.Id }
+
+            ctx.RespondChunked(
+                $"Removed auto-reply for user **%s{user.Username}**"
+            )
+        }
+
+    [<Command("autoreply"); Description("Show a given user's auto-reply.")>]
+    member _.AutoReply
+        (
+            ctx: CommandContext,
+            [<Description("Which user's auto-reply to show.")>] user: DiscordUser
+        ) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
+
+            match db.AutoReplies |> Map.tryFind user.Id with
+            | None ->
+                ctx.RespondChunked(
+                    $"No auto-reply set for user **%s{user.Username}**"
+                )
+            | Some reply ->
+                ctx.RespondChunked(
+                    $"Will reply to **%s{user.Username}** with \"%s{reply}\""
+                )
+        }
+
+    [<Command("autoreplyrate");
+      Description("Set the percentage of messages that should be replied to for the given user.")>]
+    member _.AutoReplyRate
+        (
+            ctx: CommandContext,
+            [<Description("The user to set reply rate for.")>] user: DiscordUser,
+            percentage: decimal
+        ) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
+
+            updateDb
+                { db with
+                    AutoReplyRates =
+                        db.AutoReplyRates |> Map.add user.Id percentage }
+
+            ctx.RespondChunked(
+                $"Will now reply to **%s{user.Username}** {percentage}%% of the time"
+            )
+        }
+
+    [<Command("autoreplyrate")>]
+    member _.AutoReplyRate
+        (
+            ctx: CommandContext,
+            [<Description("Which user's reply rate to show.")>] user: DiscordUser
+        ) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
+
+            let replyRate =
+                db.AutoReplyRates
+                |> Map.tryFind user.Id
+                |> Option.defaultValue 100M
+
+            ctx.RespondChunked(
+                $"Will reply to **%s{user.Username}** {replyRate}%% of the time"
+            )
         }
 
     [<Command("meanness");

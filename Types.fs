@@ -8,6 +8,7 @@ type Db =
       Status: (string * ActivityType) option
       Meanness: int
       AutoReplies: Map<uint64, string>
+      AutoReplyRates: Map<uint64, decimal>
       LastResponse: string option }
 
     static member Decoder =
@@ -25,6 +26,12 @@ type Db =
               AutoReplies =
                 Decode.list (Decode.tuple2 Decode.string Decode.string)
                 |> get.Optional.Field "AutoReplies"
+                |> Option.defaultValue []
+                |> List.map (fun (k, v) -> uint64 k, v)
+                |> Map.ofList
+              AutoReplyRates =
+                Decode.list (Decode.tuple2 Decode.string Decode.decimal)
+                |> get.Optional.Field "AutoReplyRates"
                 |> Option.defaultValue []
                 |> List.map (fun (k, v) -> uint64 k, v)
                 |> Map.ofList

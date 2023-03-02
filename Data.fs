@@ -25,6 +25,7 @@ let mutable db =
           Status = None
           Meanness = 5
           AutoReplies = Map.empty
+          AutoReplyRates = Map.empty
           LastResponse = None }
 
     try
@@ -50,6 +51,9 @@ let updateDb newDb =
             Encode.Auto.toString (
                 4,
                 newDb,
-                extra = (Extra.empty |> Extra.withUInt64)
+                extra =
+                    (Extra.empty
+                     |> Extra.withUInt64
+                     |> Extra.withDecimal)
             )
         ))
