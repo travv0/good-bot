@@ -300,11 +300,17 @@ type Commands() =
             match db.LastResponse with
             | None -> ctx.RespondChunked("No response to remove")
             | Some response ->
-                updateDb
-                    { db with
-                        Responses = db.Responses |> List.filter ((<>) response) }
+                if List.contains response db.Responses then
+                    updateDb
+                        { db with
+                            Responses =
+                                db.Responses |> List.filter ((<>) response) }
 
-                ctx.RespondChunked($"Removed **%s{response}** from responses")
+                    ctx.RespondChunked(
+                        $"Removed **%s{response}** from responses"
+                    )
+                else
+                    ctx.RespondChunked($"Response **%s{response}** not found")
         }
 
     [<Command("list"); Description("List all responses in the response pool.")>]
