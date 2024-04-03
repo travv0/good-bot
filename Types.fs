@@ -2,6 +2,7 @@ module Types
 
 open DSharpPlus.Entities
 open Thoth.Json.Net
+open System
 
 type Db =
     { Responses: string list
@@ -9,7 +10,10 @@ type Db =
       Meanness: int
       AutoReplies: Map<uint64, string>
       AutoReplyRates: Map<uint64, decimal>
-      LastResponse: string option }
+      LastResponse: string option
+      YoutubeChannel: string option
+      YoutubeChannels: Set<string>
+      LastYoutubeFetch: Map<string, DateTime> }
 
     static member Decoder =
         Decode.object (fun get ->
@@ -35,7 +39,19 @@ type Db =
                 |> Option.defaultValue []
                 |> List.map (fun (k, v) -> uint64 k, v)
                 |> Map.ofList
-              LastResponse = Decode.string |> get.Optional.Field "LastResponse" })
+              LastResponse = Decode.string |> get.Optional.Field "LastResponse"
+              YoutubeChannel =
+                Decode.string
+                |> get.Optional.Field "YoutubeChannel"
+              YoutubeChannels =
+                Decode.list Decode.string
+                |> get.Optional.Field "YoutubeChannels"
+                |> Option.defaultValue []
+                |> Set.ofList
+              LastYoutubeFetch =
+                Decode.dict Decode.datetimeUtc
+                |> get.Optional.Field "LastYoutubeFetch"
+                |> Option.defaultValue Map.empty })
 
 
 type Config =
@@ -43,7 +59,8 @@ type Config =
       DictKey: string option
       UrbanKey: string option
       CommandPrefix: string
-      DbFile: string }
+      DbFile: string
+      YoutubeKey: string option }
 
     static member Decoder =
         Decode.object (fun get ->
@@ -55,7 +72,8 @@ type Config =
                 |> Option.defaultValue "!"
               DbFile =
                 get.Optional.Field "dbFile" Decode.string
-                |> Option.defaultValue "db.json" })
+                |> Option.defaultValue "db.json"
+              YoutubeKey = get.Optional.Field "youtubeKey" Decode.string })
 
 type Definition =
     { PartOfSpeech: string option

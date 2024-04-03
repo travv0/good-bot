@@ -12,6 +12,18 @@ open System.Threading.Tasks
 module Core =
     let rand = Random()
 
+    let rec postYoutubeUpdates (dis: DiscordClient) =
+        match db.YoutubeChannel with
+        | Some channel ->
+            for update in Youtube.getYoutubeUpdates () do
+                match update with
+                | Some update ->
+                    dis.SendMessageAsync(dis.GetChannelAsync(uint64 channel).Result, update) |> ignore
+                | None -> ()
+        | None -> ()
+        Task.Delay(1000 * 60) |> ignore
+        postYoutubeUpdates dis
+
     let clientReady (dis: DiscordClient) _ =
         dis.Logger.LogInformation $"Bot ready using configuration %A{config}"
 
@@ -41,7 +53,7 @@ module Core =
         match e.Exception with
         | :? ArgumentException ->
             e.Context.RespondAsync
-                $"Invalid arguments for command **%s{e.Command.Name}**"
+                $"Invalid arguments for command **%s{e.Command.Name}**: %s{e.Exception.Message}"
             :> Task
         | :? Exceptions.CommandNotFoundException -> Task.CompletedTask
         | exn ->
@@ -51,6 +63,9 @@ module Core =
             Task.CompletedTask
 
     let messageCreated (dis: DiscordClient) (e: MessageCreateEventArgs) =
+        if Option.isNone db.YoutubeChannel then
+            updateDb { db with YoutubeChannel = Some(e.Guild.SystemChannel.Id.ToString()) }
+
         if not e.Author.IsBot
            && (Seq.contains dis.CurrentUser e.MentionedUsers
                || e.Message.Content.Contains("@everyone")
@@ -124,6 +139,8 @@ let main _ =
     Core.discord.ConnectAsync()
     |> Async.AwaitTask
     |> Async.RunSynchronously
+
+    Task.Run (fun () -> Core.postYoutubeUpdates Core.discord) |> ignore
 
     Task.Delay(-1)
     |> Async.AwaitTask

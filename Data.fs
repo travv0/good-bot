@@ -26,7 +26,10 @@ let mutable db =
           Meanness = 5
           AutoReplies = Map.empty
           AutoReplyRates = Map.empty
-          LastResponse = None }
+          LastResponse = None
+          YoutubeChannel = None
+          YoutubeChannels = Set.empty
+          LastYoutubeFetch = Map.empty }
 
     try
         match

@@ -3,5 +3,6 @@
     "dictKey": "dictionaryapi.com-key",
     "urbanKey": "urban-dictionary-api-key",
     "prefix": "!",
-    "dbFile": "db.json"
+    "dbFile": "db.json",
+    "youtubeKey": "youtube-api-key"
 }

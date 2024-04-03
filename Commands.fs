@@ -494,3 +494,55 @@ type Commands() =
             [<RemainingText; Description("The lox program to lex and parse.")>] program
         ) : Task =
         lox ctx true program
+
+    [<Command("follow"); Description("Get updates for the given YouTube channel.")>]
+    member _.FollowAsync
+        (
+            ctx: CommandContext,
+            [<Description("The channel ID or handle of the YouTube channel to follow.")>] channel: string
+        ) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
+            match! Youtube.getYoutubeChannelId channel with
+            | None -> ctx.RespondChunked($"Could not find a YouTube channel **%s{channel}**")
+            | Some channelId ->
+                if db.YoutubeChannels |> Set.contains channelId then
+                    ctx.RespondChunked($"Already following **%s{channel}**")
+                else
+                    updateDb { db with YoutubeChannels = db.YoutubeChannels |> Set.add channelId }
+                    ctx.RespondChunked($"Now following **%s{channel}**")
+        }
+
+    [<Command("unfollow"); Description("Stop getting updates for the given YouTube channel.")>]
+    member _.UnfollowAsync
+        (
+            ctx: CommandContext,
+            [<Description("The channel ID or handle of the YouTube channel to unfollow.")>] channel: string
+        ) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
+            match! Youtube.getYoutubeChannelId channel with
+            | None -> ctx.RespondChunked($"Could not find a YouTube channel **%s{channel}**")
+            | Some channelId ->
+                if db.YoutubeChannels |> Set.contains channelId then
+                    updateDb { db with YoutubeChannels = db.YoutubeChannels |> Set.remove channelId }
+                    ctx.RespondChunked($"No longer following **%s{channel}**")
+                else
+                    ctx.RespondChunked($"Not following **%s{channel}**")
+        }
+
+    [<Command("youtube"); Description("List all YouTube channels being followed.")>]
+    member _.YoutubeAsync(ctx: CommandContext) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
+            let channels =
+                db.YoutubeChannels
+                |> Set.map (fun channel -> $"https://www.youtube.com/channel/%s{channel}")
+                |> Set.toList
+                |> String.concat "\n"
+
+            if channels = "" then
+                ctx.RespondChunked("Not following any YouTube channels")
+            else
+                ctx.RespondChunked(channels)
+        }
