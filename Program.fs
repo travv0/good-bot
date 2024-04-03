@@ -63,9 +63,6 @@ module Core =
             Task.CompletedTask
 
     let messageCreated (dis: DiscordClient) (e: MessageCreateEventArgs) =
-        if Option.isNone db.YoutubeChannel then
-            updateDb { db with YoutubeChannel = Some(e.Guild.SystemChannel.Id.ToString()) }
-
         if not e.Author.IsBot
            && (Seq.contains dis.CurrentUser e.MentionedUsers
                || e.Message.Content.Contains("@everyone")

@@ -503,6 +503,10 @@ type Commands() =
         ) : Task =
         task {
             do! ctx.TriggerTypingAsync()
+
+            if Option.isNone db.YoutubeChannel && ctx.Guild.SystemChannel <> null then
+                updateDb { db with YoutubeChannel = Some ctx.Guild.SystemChannel.Id }
+
             match! Youtube.getYoutubeChannelId channel with
             | None -> ctx.RespondChunked($"Could not find a YouTube channel **%s{channel}**")
             | Some channelId ->
@@ -545,4 +549,29 @@ type Commands() =
                 ctx.RespondChunked("Not following any YouTube channels")
             else
                 ctx.RespondChunked(channels)
+        }
+
+    [<Command("ytchannel"); Description("Set Discord channel to post YouTube updates to.")>]
+    member _.YoutubeChannelAsync
+        (
+            ctx: CommandContext,
+            [<Description("The channel to post YouTube updates to.")>] channel: DiscordChannel
+        ) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
+            updateDb { db with YoutubeChannel = Some channel.Id }
+            ctx.RespondChunked($"Set YouTube updates channel to **#%s{channel.Name}**")
+        }
+
+    [<Command("ytchannel"); Description("Get the Discord channel that YouTube updates are posted to.")>]
+    member _.YoutubeChannelAsync(ctx: CommandContext) : Task =
+        task {
+            do! ctx.TriggerTypingAsync()
+            match db.YoutubeChannel with
+            | None -> ctx.RespondChunked("No YouTube updates channel set")
+            | Some channelId ->
+                let channel = ctx.Guild.GetChannel channelId
+                match channel with
+                | null -> ctx.RespondChunked("YouTube updates channel no longer exists")
+                | _ -> ctx.RespondChunked($"YouTube updates channel is **#%s{channel.Name}**")
         }

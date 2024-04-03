@@ -11,7 +11,7 @@ type Db =
       AutoReplies: Map<uint64, string>
       AutoReplyRates: Map<uint64, decimal>
       LastResponse: string option
-      YoutubeChannel: string option
+      YoutubeChannel: uint64 option
       YoutubeChannels: Set<string>
       LastYoutubeFetch: Map<string, DateTime> }
 
@@ -43,6 +43,7 @@ type Db =
               YoutubeChannel =
                 Decode.string
                 |> get.Optional.Field "YoutubeChannel"
+                |> Option.map uint64
               YoutubeChannels =
                 Decode.list Decode.string
                 |> get.Optional.Field "YoutubeChannels"
