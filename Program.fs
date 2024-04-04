@@ -14,8 +14,6 @@ module Core =
     let rand = Random()
 
     let rec postYoutubeUpdates (dis: DiscordClient) =
-        dis.Logger.LogInformation "Checking for new Youtube updates..."
-
         match (getDb ()).YoutubeChannel with
         | Some channel ->
             let updates = Youtube.getYoutubeUpdates ()
@@ -45,7 +43,7 @@ module Core =
                     update
                 )
                 |> ignore
-        | None -> dis.Logger.LogInformation "No channel set for YouTube updates"
+        | None -> ()
 
         Thread.Sleep(1000 * 60)
         postYoutubeUpdates dis
