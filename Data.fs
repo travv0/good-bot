@@ -12,14 +12,11 @@ let config =
         | [| _; configPath |] -> configPath
         | _ -> failwith "too many arguments, expected at most one (config path)"
 
-    match
-        File.ReadAllText(configPath)
-        |> Decode.fromString Config.Decoder
-        with
+    match File.ReadAllText(configPath) |> Decode.fromString Config.Decoder with
     | Ok config -> config
     | Error e -> failwith e
 
-let mutable db =
+let mutable private db =
     let defaultDb =
         { Responses = [ "hi" ]
           Status = None
@@ -33,15 +30,13 @@ let mutable db =
 
     try
         match
-            File.ReadAllText(config.DbFile)
-            |> Decode.fromString Db.Decoder
-            with
+            File.ReadAllText(config.DbFile) |> Decode.fromString Db.Decoder
+        with
         | Ok db -> db
         | Error e ->
             printfn $"%s{e}"
             defaultDb
-    with
-    | e ->
+    with e ->
         printfn $"%s{e.Message}"
         defaultDb
 
@@ -54,9 +49,8 @@ let updateDb newDb =
             Encode.Auto.toString (
                 4,
                 newDb,
-                extra =
-                    (Extra.empty
-                     |> Extra.withUInt64
-                     |> Extra.withDecimal)
+                extra = (Extra.empty |> Extra.withUInt64 |> Extra.withDecimal)
             )
         ))
+
+let getDb () = lock db (fun () -> db)

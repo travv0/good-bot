@@ -19,7 +19,7 @@ let getYoutubeChannelId (channel: string) =
                 youtubeService,
                 Repeatable([| "id" |]),
                 Id = Repeatable([| channel |]),
-                MaxResults = 1
+                MaxResults = 1L
             )
 
         let! response = searchRequest.ExecuteAsync()
@@ -39,7 +39,7 @@ let getYoutubeChannelId (channel: string) =
                         youtubeService,
                         Repeatable([| "id" |]),
                         ForHandle = channel,
-                        MaxResults = 1
+                        MaxResults = 1L
                     )
 
                 match searchRequest.Execute().Items with
@@ -55,7 +55,7 @@ let getYoutubeHandleByChannelId (channelId: string) =
                 youtubeService,
                 Repeatable([| "brandingSettings" |]),
                 Id = Repeatable([| channelId |]),
-                MaxResults = 1
+                MaxResults = 1L
             )
 
         let! response = searchRequest.ExecuteAsync()
@@ -63,34 +63,39 @@ let getYoutubeHandleByChannelId (channelId: string) =
         return
             match response.Items with
             | null -> None
-            | items when items.Count > 0 -> Some items.[0].BrandingSettings.Channel.Title
+            | items when items.Count > 0 ->
+                Some items.[0].BrandingSettings.Channel.Title
             | _ -> None
     }
 
 let getYoutubeUpdates () : string option list =
-    [ for channelId in db.YoutubeChannels do
+    [ for channelId in (getDb ()).YoutubeChannels do
           let listRequest =
               ActivitiesResource.ListRequest(
                   youtubeService,
                   Repeatable([| "snippet"; "contentDetails"; "id" |]),
                   ChannelId = channelId,
-                  MaxResults = 50,
+                  MaxResults = 50L,
                   PublishedAfter =
-                      (Map.tryFind channelId db.LastYoutubeFetch
+                      (Map.tryFind channelId (getDb ()).LastYoutubeFetch
                        |> Option.defaultValue (DateTime.Now.AddHours(-1)))
               )
 
           updateDb
-              { db with
-                  LastYoutubeFetch = Map.add channelId DateTime.Now db.LastYoutubeFetch }
+              { (getDb ()) with
+                  LastYoutubeFetch =
+                      Map.add channelId DateTime.Now (getDb ()).LastYoutubeFetch }
 
           let response = listRequest.ExecuteAsync().Result
 
           let urlByResourceIdKind (resourceId: ResourceId) =
               match resourceId.Kind with
-              | "youtube#video" -> $"https://www.youtube.com/watch?v=%s{resourceId.VideoId}"
-              | "youtube#playlist" -> $"https://www.youtube.com/playlist?list=%s{resourceId.PlaylistId}"
-              | "youtube#channel" -> $"https://www.youtube.com/channel/%s{resourceId.ChannelId}"
+              | "youtube#video" ->
+                  $"https://www.youtube.com/watch?v=%s{resourceId.VideoId}"
+              | "youtube#playlist" ->
+                  $"https://www.youtube.com/playlist?list=%s{resourceId.PlaylistId}"
+              | "youtube#channel" ->
+                  $"https://www.youtube.com/channel/%s{resourceId.ChannelId}"
               | _ -> $"Unsupported resource type: %s{resourceId.Kind}"
 
           let channelTitle =
@@ -104,43 +109,50 @@ let getYoutubeUpdates () : string option list =
                   yield
                       Some(
                           $"**{channelTitle}** has a new channel item, whatever that is: "
-                          + urlByResourceIdKind item.ContentDetails.ChannelItem.ResourceId
+                          + urlByResourceIdKind
+                              item.ContentDetails.ChannelItem.ResourceId
                       )
               | "favorite" ->
                   yield
                       Some(
                           "$**{channelTitle}** has a new favorite! I wonder what kind of cool thing it could be? "
-                          + urlByResourceIdKind item.ContentDetails.Favorite.ResourceId
+                          + urlByResourceIdKind
+                              item.ContentDetails.Favorite.ResourceId
                       )
               | "like" ->
                   yield
                       Some(
                           $"**{channelTitle}** liked something. I bet it's not weird at all: "
-                          + urlByResourceIdKind item.ContentDetails.Like.ResourceId
+                          + urlByResourceIdKind
+                              item.ContentDetails.Like.ResourceId
                       )
               | "playlistItem" ->
                   yield
                       Some(
                           $"**{channelTitle}** added a new video to their playlist: "
-                          + urlByResourceIdKind item.ContentDetails.PlaylistItem.ResourceId
+                          + urlByResourceIdKind
+                              item.ContentDetails.PlaylistItem.ResourceId
                       )
               | "recommendation" ->
                   yield
                       Some(
                           $"**{channelTitle}** has a new recommendation for you: "
-                          + urlByResourceIdKind item.ContentDetails.Recommendation.ResourceId
+                          + urlByResourceIdKind
+                              item.ContentDetails.Recommendation.ResourceId
                       )
               | "social" ->
                   yield
                       Some(
                           $"**{channelTitle}** has a new social thing, that social butterfly: "
-                          + urlByResourceIdKind item.ContentDetails.Social.ResourceId
+                          + urlByResourceIdKind
+                              item.ContentDetails.Social.ResourceId
                       )
               | "subscription" ->
                   yield
                       Some(
                           $"**{channelTitle}** has subscribed to a user. More quality content in their future! "
-                          + urlByResourceIdKind item.ContentDetails.Subscription.ResourceId
+                          + urlByResourceIdKind
+                              item.ContentDetails.Subscription.ResourceId
                       )
               | "upload" ->
                   yield

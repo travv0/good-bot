@@ -1,3 +1,4 @@
+open System.Threading
 open DSharpPlus
 open DSharpPlus.CommandsNext
 open DSharpPlus.Entities
@@ -13,22 +14,27 @@ module Core =
     let rand = Random()
 
     let rec postYoutubeUpdates (dis: DiscordClient) =
-        match db.YoutubeChannel with
+        match (getDb ()).YoutubeChannel with
         | Some channel ->
             for update in Youtube.getYoutubeUpdates () do
                 match update with
                 | Some update ->
-                    dis.SendMessageAsync(dis.GetChannelAsync(uint64 channel).Result, update) |> ignore
+                    dis.SendMessageAsync(
+                        dis.GetChannelAsync(uint64 channel).Result,
+                        update
+                    )
+                    |> ignore
                 | None -> ()
         | None -> ()
+
         Task.Delay(1000 * 60) |> ignore
         postYoutubeUpdates dis
 
     let clientReady (dis: DiscordClient) _ =
         dis.Logger.LogInformation $"Bot ready using configuration %A{config}"
 
-        match db.Status with
-        | Some (name, activityType) ->
+        match (getDb ()).Status with
+        | Some(name, activityType) ->
             dis.UpdateStatusAsync(DiscordActivity(name, activityType))
         | None -> Task.CompletedTask
 
@@ -63,25 +69,31 @@ module Core =
             Task.CompletedTask
 
     let messageCreated (dis: DiscordClient) (e: MessageCreateEventArgs) =
-        if not e.Author.IsBot
-           && (Seq.contains dis.CurrentUser e.MentionedUsers
-               || e.Message.Content.Contains("@everyone")
-               || e.Message.Content.Contains("@here")) then
-            let responseNum =
-                rand.Next(db.Responses.Length)
+        if
+            not e.Author.IsBot
+            && (Seq.contains dis.CurrentUser e.MentionedUsers
+                || e.Message.Content.Contains("@everyone")
+                || e.Message.Content.Contains("@here"))
+        then
+            let responseNum = rand.Next((getDb ()).Responses.Length)
+            let response = (getDb ()).Responses[responseNum]
 
-            let response = db.Responses[responseNum]
-            updateDb { db with LastResponse = Some response }
+            updateDb
+                { getDb () with
+                    LastResponse = Some response }
+
             e.Message.RespondAsync(response) :> Task
 
-        elif db.AutoReplies.ContainsKey(e.Message.Author.Id) then
+        elif (getDb ()).AutoReplies.ContainsKey(e.Message.Author.Id) then
             let replyRate =
-                db.AutoReplyRates
+                (getDb ()).AutoReplyRates
                 |> Map.tryFind e.Message.Author.Id
                 |> Option.defaultValue 100M
 
             if rand.NextDouble() * 100.0 < double replyRate then
-                e.Message.RespondAsync(db.AutoReplies[e.Message.Author.Id])
+                e.Message.RespondAsync(
+                    (getDb ()).AutoReplies[e.Message.Author.Id]
+                )
                 :> Task
             else
                 Task.CompletedTask
@@ -95,9 +107,11 @@ module Core =
             | 11 -> 1
             | n -> 2000 / n
 
-        if not e.User.IsCurrent
-           && db.Meanness > 0
-           && rand.Next(meannessToRatio db.Meanness) = 0 then
+        if
+            not e.User.IsCurrent
+            && (getDb ()).Meanness > 0
+            && rand.Next(meannessToRatio (getDb ()).Meanness) = 0
+        then
             dis.SendMessageAsync(e.Channel, $"shut up <@%u{e.User.Id}>") :> Task
         else
             Task.CompletedTask
@@ -110,8 +124,7 @@ module Core =
             AutoReconnect = true
         )
 
-    let discord =
-        new DiscordClient(discordConfig)
+    let discord = new DiscordClient(discordConfig)
 
     discord.add_SocketErrored (AsyncEventHandler<_, _>(socketErrored))
     discord.add_ClientErrored (AsyncEventHandler<_, _>(clientErrored))
@@ -125,22 +138,19 @@ module Core =
             EnableMentionPrefix = false
         )
 
-    let commands =
-        discord.UseCommandsNext(commandConfig)
+    let commands = discord.UseCommandsNext(commandConfig)
 
     commands.add_CommandErrored (AsyncEventHandler<_, _>(commandErrored))
     commands.RegisterCommands<Commands>()
 
 [<EntryPoint>]
 let main _ =
-    Core.discord.ConnectAsync()
-    |> Async.AwaitTask
-    |> Async.RunSynchronously
+    Core.discord.ConnectAsync() |> Async.AwaitTask |> Async.RunSynchronously
 
-    Task.Run (fun () -> Core.postYoutubeUpdates Core.discord) |> ignore
+    let youtubeThread =
+        Thread(ThreadStart(fun () -> Core.postYoutubeUpdates Core.discord))
 
-    Task.Delay(-1)
-    |> Async.AwaitTask
-    |> Async.RunSynchronously
+    youtubeThread.Start()
 
+    Task.Delay(-1) |> Async.AwaitTask |> Async.RunSynchronously
     0

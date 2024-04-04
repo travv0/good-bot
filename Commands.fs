@@ -39,7 +39,7 @@ type Commands() =
             do! ctx.Client.UpdateStatusAsync(activity = activity)
 
             updateDb
-                { db with
+                { getDb () with
                     Status =
                         if String.IsNullOrWhiteSpace(name) then
                             None
@@ -183,9 +183,7 @@ type Commands() =
         task {
             do! ctx.TriggerTypingAsync()
 
-            let code =
-                parseCodeBlockFromMessage program
-                |> Result.ok program
+            let code = parseCodeBlockFromMessage program |> Result.ok program
 
             let path = Path.GetTempFileName()
             File.WriteAllText(path, code)
@@ -251,8 +249,9 @@ type Commands() =
                 ctx.RespondChunked("Missing response to add")
             else
                 updateDb
-                    { db with
-                        Responses = response :: db.Responses |> List.distinct }
+                    { getDb () with
+                        Responses =
+                            response :: (getDb ()).Responses |> List.distinct }
 
                 ctx.RespondChunked($"Added **%s{response}** to responses")
         }
@@ -269,12 +268,13 @@ type Commands() =
 
             if String.IsNullOrWhiteSpace(response) then
                 ctx.RespondChunked("Missing response to remove")
-            elif not (List.contains response db.Responses) then
+            elif not (List.contains response (getDb ()).Responses) then
                 ctx.RespondChunked($"Response **%s{response}** not found")
             else
                 updateDb
-                    { db with
-                        Responses = db.Responses |> List.filter ((<>) response) }
+                    { (getDb ()) with
+                        Responses =
+                            (getDb ()).Responses |> List.filter ((<>) response) }
 
                 ctx.RespondChunked($"Removed **%s{response}** from responses")
         }
@@ -285,14 +285,15 @@ type Commands() =
         task {
             do! ctx.TriggerTypingAsync()
 
-            match db.LastResponse with
+            match (getDb ()).LastResponse with
             | None -> ctx.RespondChunked("No response to remove")
             | Some response ->
-                if List.contains response db.Responses then
+                if List.contains response (getDb ()).Responses then
                     updateDb
-                        { db with
+                        { (getDb ()) with
                             Responses =
-                                db.Responses |> List.filter ((<>) response) }
+                                (getDb ()).Responses
+                                |> List.filter ((<>) response) }
 
                     ctx.RespondChunked(
                         $"Removed **%s{response}** from responses"
@@ -305,7 +306,7 @@ type Commands() =
     member _.ListResponsesAsync(ctx: CommandContext) : Task =
         task {
             do! ctx.TriggerTypingAsync()
-            ctx.RespondChunked(String.join "\n" db.Responses)
+            ctx.RespondChunked(String.join "\n" (getDb ()).Responses)
         }
 
     [<Command("playing"); Description("Set bot's activity to Playing.")>]
@@ -324,8 +325,7 @@ type Commands() =
         ) : Task =
         updateStatus ctx name ActivityType.Watching
 
-    [<Command("listeningto");
-      Description("Set bot's activity to Listening To.")>]
+    [<Command("listeningto"); Description("Set bot's activity to Listening To.")>]
     member _.ListeningToAsync
         (
             ctx,
@@ -333,8 +333,7 @@ type Commands() =
         ) : Task =
         updateStatus ctx name ActivityType.ListeningTo
 
-    [<Command("competingin");
-      Description("Set bot's activity to Competing In.")>]
+    [<Command("competingin"); Description("Set bot's activity to Competing In.")>]
     member _.CompetingInAsync
         (
             ctx,
@@ -357,8 +356,9 @@ type Commands() =
                 ctx.RespondChunked("I can't set an auto-reply for myself")
             else
                 updateDb
-                    { db with
-                        AutoReplies = db.AutoReplies |> Map.add user.Id reply }
+                    { (getDb ()) with
+                        AutoReplies =
+                            (getDb ()).AutoReplies |> Map.add user.Id reply }
 
                 ctx.RespondChunked(
                     $"Will now reply to **%s{user.Username}** with \"%s{reply}\""
@@ -369,12 +369,13 @@ type Commands() =
     member _.AutoReply
         (
             ctx: CommandContext,
-            [<Description("Which user's auto-reply to show.")>] user: DiscordUser
+            [<Description("Which user's auto-reply to show.")>] user:
+                DiscordUser
         ) : Task =
         task {
             do! ctx.TriggerTypingAsync()
 
-            match db.AutoReplies |> Map.tryFind user.Id with
+            match (getDb ()).AutoReplies |> Map.tryFind user.Id with
             | None ->
                 ctx.RespondChunked(
                     $"No auto-reply set for user **%s{user.Username}**"
@@ -397,7 +398,8 @@ type Commands() =
             do! ctx.TriggerTypingAsync()
 
             updateDb
-                { db with AutoReplies = db.AutoReplies |> Map.remove user.Id }
+                { (getDb ()) with
+                    AutoReplies = (getDb ()).AutoReplies |> Map.remove user.Id }
 
             ctx.RespondChunked(
                 $"Removed auto-reply for user **%s{user.Username}**"
@@ -410,15 +412,16 @@ type Commands() =
         (
             ctx: CommandContext,
             [<Description("The user to set reply rate for.")>] user: DiscordUser,
-            [<Description("The percentage of messages to reply to.")>] percentage: decimal
+            [<Description("The percentage of messages to reply to.")>] percentage:
+                decimal
         ) : Task =
         task {
             do! ctx.TriggerTypingAsync()
 
             updateDb
-                { db with
+                { (getDb ()) with
                     AutoReplyRates =
-                        db.AutoReplyRates |> Map.add user.Id percentage }
+                        (getDb ()).AutoReplyRates |> Map.add user.Id percentage }
 
             ctx.RespondChunked(
                 $"Will now reply to **%s{user.Username}** {percentage}%% of the time"
@@ -429,13 +432,14 @@ type Commands() =
     member _.AutoReplyRate
         (
             ctx: CommandContext,
-            [<Description("Which user's reply rate to show.")>] user: DiscordUser
+            [<Description("Which user's reply rate to show.")>] user:
+                DiscordUser
         ) : Task =
         task {
             do! ctx.TriggerTypingAsync()
 
             let replyRate =
-                db.AutoReplyRates
+                (getDb ()).AutoReplyRates
                 |> Map.tryFind user.Id
                 |> Option.defaultValue 100M
 
@@ -454,7 +458,7 @@ type Commands() =
         task {
             do! ctx.TriggerTypingAsync()
             let meanness = level |> max 0 |> min 11
-            updateDb { db with Meanness = meanness }
+            updateDb { (getDb ()) with Meanness = meanness }
             ctx.RespondChunked($"Set meanness to **%d{meanness}**")
         }
 
@@ -462,7 +466,10 @@ type Commands() =
     member _.MeannessAsync(ctx: CommandContext) : Task =
         task {
             do! ctx.TriggerTypingAsync()
-            ctx.RespondChunked($"Current meanness is **%d{db.Meanness}**")
+
+            ctx.RespondChunked(
+                $"Current meanness is **%d{(getDb ()).Meanness}**"
+            )
         }
 
     [<Command("calc"); Description("Calculate the result of an expression.")>]
@@ -495,53 +502,81 @@ type Commands() =
         ) : Task =
         lox ctx true program
 
-    [<Command("follow"); Description("Get updates for the given YouTube channel.")>]
+    [<Command("follow");
+      Description("Get updates for the given YouTube channel.")>]
     member _.FollowAsync
         (
             ctx: CommandContext,
-            [<Description("The channel ID or handle of the YouTube channel to follow.")>] channel: string
+            [<Description("The channel ID or handle of the YouTube channel to follow.")>] channel:
+                string
         ) : Task =
         task {
             do! ctx.TriggerTypingAsync()
 
-            if Option.isNone db.YoutubeChannel && ctx.Guild.SystemChannel <> null then
-                updateDb { db with YoutubeChannel = Some ctx.Guild.SystemChannel.Id }
+            if
+                Option.isNone (getDb ()).YoutubeChannel
+                && ctx.Guild.SystemChannel <> null
+            then
+                updateDb
+                    { (getDb ()) with
+                        YoutubeChannel = Some ctx.Guild.SystemChannel.Id }
 
             match! Youtube.getYoutubeChannelId channel with
-            | None -> ctx.RespondChunked($"Could not find a YouTube channel **%s{channel}**")
+            | None ->
+                ctx.RespondChunked(
+                    $"Could not find a YouTube channel **%s{channel}**"
+                )
             | Some channelId ->
-                if db.YoutubeChannels |> Set.contains channelId then
+                if (getDb ()).YoutubeChannels |> Set.contains channelId then
                     ctx.RespondChunked($"Already following **%s{channel}**")
                 else
-                    updateDb { db with YoutubeChannels = db.YoutubeChannels |> Set.add channelId }
+                    updateDb
+                        { (getDb ()) with
+                            YoutubeChannels =
+                                (getDb ()).YoutubeChannels |> Set.add channelId }
+
                     ctx.RespondChunked($"Now following **%s{channel}**")
         }
 
-    [<Command("unfollow"); Description("Stop getting updates for the given YouTube channel.")>]
+    [<Command("unfollow");
+      Description("Stop getting updates for the given YouTube channel.")>]
     member _.UnfollowAsync
         (
             ctx: CommandContext,
-            [<Description("The channel ID or handle of the YouTube channel to unfollow.")>] channel: string
+            [<Description("The channel ID or handle of the YouTube channel to unfollow.")>] channel:
+                string
         ) : Task =
         task {
             do! ctx.TriggerTypingAsync()
+
             match! Youtube.getYoutubeChannelId channel with
-            | None -> ctx.RespondChunked($"Could not find a YouTube channel **%s{channel}**")
+            | None ->
+                ctx.RespondChunked(
+                    $"Could not find a YouTube channel **%s{channel}**"
+                )
             | Some channelId ->
-                if db.YoutubeChannels |> Set.contains channelId then
-                    updateDb { db with YoutubeChannels = db.YoutubeChannels |> Set.remove channelId }
+                if (getDb ()).YoutubeChannels |> Set.contains channelId then
+                    updateDb
+                        { (getDb ()) with
+                            YoutubeChannels =
+                                (getDb ()).YoutubeChannels
+                                |> Set.remove channelId }
+
                     ctx.RespondChunked($"No longer following **%s{channel}**")
                 else
                     ctx.RespondChunked($"Not following **%s{channel}**")
         }
 
-    [<Command("youtube"); Description("List all YouTube channels being followed.")>]
+    [<Command("youtube");
+      Description("List all YouTube channels being followed.")>]
     member _.YoutubeAsync(ctx: CommandContext) : Task =
         task {
             do! ctx.TriggerTypingAsync()
+
             let channels =
-                db.YoutubeChannels
-                |> Set.map (fun channel -> $"https://www.youtube.com/channel/%s{channel}")
+                (getDb ()).YoutubeChannels
+                |> Set.map (fun channel ->
+                    $"https://www.youtube.com/channel/%s{channel}")
                 |> Set.toList
                 |> String.concat "\n"
 
@@ -551,27 +586,44 @@ type Commands() =
                 ctx.RespondChunked(channels)
         }
 
-    [<Command("ytchannel"); Description("Set Discord channel to post YouTube updates to.")>]
+    [<Command("ytchannel");
+      Description("Set Discord channel to post YouTube updates to.")>]
     member _.YoutubeChannelAsync
         (
             ctx: CommandContext,
-            [<Description("The channel to post YouTube updates to.")>] channel: DiscordChannel
+            [<Description("The channel to post YouTube updates to.")>] channel:
+                DiscordChannel
         ) : Task =
         task {
             do! ctx.TriggerTypingAsync()
-            updateDb { db with YoutubeChannel = Some channel.Id }
-            ctx.RespondChunked($"Set YouTube updates channel to **#%s{channel.Name}**")
+
+            updateDb
+                { (getDb ()) with
+                    YoutubeChannel = Some channel.Id }
+
+            ctx.RespondChunked(
+                $"Set YouTube updates channel to **#%s{channel.Name}**"
+            )
         }
 
-    [<Command("ytchannel"); Description("Get the Discord channel that YouTube updates are posted to.")>]
+    [<Command("ytchannel");
+      Description("Get the Discord channel that YouTube updates are posted to.")>]
     member _.YoutubeChannelAsync(ctx: CommandContext) : Task =
         task {
             do! ctx.TriggerTypingAsync()
-            match db.YoutubeChannel with
+
+            match (getDb ()).YoutubeChannel with
             | None -> ctx.RespondChunked("No YouTube updates channel set")
             | Some channelId ->
                 let channel = ctx.Guild.GetChannel channelId
+
                 match channel with
-                | null -> ctx.RespondChunked("YouTube updates channel no longer exists")
-                | _ -> ctx.RespondChunked($"YouTube updates channel is **#%s{channel.Name}**")
+                | null ->
+                    ctx.RespondChunked(
+                        "YouTube updates channel no longer exists"
+                    )
+                | _ ->
+                    ctx.RespondChunked(
+                        $"YouTube updates channel is **#%s{channel.Name}**"
+                    )
         }
