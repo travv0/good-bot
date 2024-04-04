@@ -26,7 +26,8 @@ let mutable private db =
           LastResponse = None
           YoutubeChannel = None
           YoutubeChannels = Set.empty
-          LastYoutubeFetch = Map.empty }
+          LastYoutubeFetch = Map.empty
+          SeenCommunityPosts = Set.empty }
 
     try
         match

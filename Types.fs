@@ -13,7 +13,8 @@ type Db =
       LastResponse: string option
       YoutubeChannel: uint64 option
       YoutubeChannels: Set<string>
-      LastYoutubeFetch: Map<string, DateTime> }
+      LastYoutubeFetch: Map<string, DateTime>
+      SeenCommunityPosts: Set<string> }
 
     static member Decoder =
         Decode.object (fun get ->
@@ -52,7 +53,12 @@ type Db =
               LastYoutubeFetch =
                 Decode.dict Decode.datetimeUtc
                 |> get.Optional.Field "LastYoutubeFetch"
-                |> Option.defaultValue Map.empty })
+                |> Option.defaultValue Map.empty
+              SeenCommunityPosts =
+                Decode.list Decode.string
+                |> get.Optional.Field "SeenCommunityPosts"
+                |> Option.defaultValue []
+                |> Set.ofList })
 
 
 type Config =

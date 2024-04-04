@@ -19,9 +19,15 @@ module Core =
         match (getDb ()).YoutubeChannel with
         | Some channel ->
             let updates = Youtube.getYoutubeUpdates ()
+            let communityUpdates = Youtube.getCommunityUpdates ()
 
-            dis.Logger.LogInformation
-                $"Found %d{List.length updates} new Youtube updates"
+            if List.length communityUpdates > 0 then
+                dis.Logger.LogInformation
+                    $"Found %d{List.length communityUpdates} new Youtube community updates"
+
+            if List.length updates > 0 then
+                dis.Logger.LogInformation
+                    $"Found %d{List.length updates} new Youtube updates"
 
             for update in updates do
                 match update with
@@ -32,6 +38,13 @@ module Core =
                     )
                     |> ignore
                 | None -> ()
+
+            for update in communityUpdates do
+                dis.SendMessageAsync(
+                    dis.GetChannelAsync(uint64 channel).Result,
+                    update
+                )
+                |> ignore
         | None -> dis.Logger.LogInformation "No channel set for YouTube updates"
 
         Thread.Sleep(1000 * 60)

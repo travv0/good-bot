@@ -1,11 +1,13 @@
 module Youtube
 
-open Google.Apis.Services
 open Data
-open Google.Apis.YouTube.v3
+open FSharp.Data
+open Google.Apis.Services
 open Google.Apis.Util
+open Google.Apis.YouTube.v3
 open Google.Apis.YouTube.v3.Data
 open System
+open Thoth.Json.Net
 
 let youtubeService =
     let initializer = BaseClientService.Initializer()
@@ -48,7 +50,7 @@ let getYoutubeChannelId (channel: string) =
                 | _ -> None
     }
 
-let getYoutubeHandleByChannelId (channelId: string) =
+let getChannelTitleByChannelId (channelId: string) =
     task {
         let searchRequest =
             ChannelsResource.ListRequest(
@@ -99,7 +101,7 @@ let getYoutubeUpdates () : string option list =
               | _ -> $"Unsupported resource type: %s{resourceId.Kind}"
 
           let channelTitle =
-              match (getYoutubeHandleByChannelId channelId).Result with
+              match (getChannelTitleByChannelId channelId).Result with
               | Some title -> title
               | None -> channelId
 
@@ -161,3 +163,66 @@ let getYoutubeUpdates () : string option list =
                           + $"https://www.youtube.com/watch?v=%s{item.ContentDetails.Upload.VideoId}"
                       )
               | _ -> yield None ]
+
+type ContentText =
+    { text: string }
+
+    static member Decoder =
+        Decode.map
+            (fun text -> { text = text })
+            (Decode.field "text" Decode.string)
+
+type Community =
+    { id: string
+      contentText: ContentText list }
+
+    static member Decoder =
+        Decode.map2
+            (fun id contentText -> { id = id; contentText = contentText })
+            (Decode.field "id" Decode.string)
+            (Decode.field "contentText" (Decode.list ContentText.Decoder))
+
+type Channel =
+    { id: string
+      Community: Community list }
+
+    static member Decoder =
+        Decode.map2
+            (fun id community -> { id = id; Community = community })
+            (Decode.field "id" Decode.string)
+            (Decode.field "community" (Decode.list Community.Decoder))
+
+type ChannelList =
+    { items: Channel list }
+
+    static member Decoder =
+        Decode.map
+            (fun items -> { items = items })
+            (Decode.field "items" (Decode.list Channel.Decoder))
+
+let getCommunityUpdates () : string list =
+    [ for channelId in (getDb ()).YoutubeChannels do
+        let channelTitle = match (getChannelTitleByChannelId channelId).Result with
+                           | Some title -> title
+                           | None -> channelId
+        let communityApiUrl = $"https://yt.lemnoslife.com/channels?part=community,snippet&id=%s{channelId}"
+        let response = Http.RequestString(communityApiUrl)
+
+        match response |> Decode.fromString ChannelList.Decoder with
+        | Ok channelList ->
+            for channel in channelList.items do
+                for post in channel.Community do
+                    if not (Set.contains post.id (getDb ()).SeenCommunityPosts) then
+                        yield
+                            $"**{channelTitle}** has a new community post: \n"
+                            + (post.contentText |> List.map (fun x -> x.text) |> String.concat "\n")
+                            + $"\n\nSee full post at https://www.youtube.com/post/%s{post.id}"
+
+                let postIds = channel.Community |> List.map (fun x -> x.id)
+                updateDb
+                    { (getDb ()) with
+                         SeenCommunityPosts = Set.union (getDb ()).SeenCommunityPosts (Set.ofList postIds )}
+        | Error error ->
+            yield
+                $"Error decoding community post for channel {channelId}: {error}"
+    ]
