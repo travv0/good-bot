@@ -215,7 +215,7 @@ let getCommunityUpdates () : string list =
                     if not (Set.contains post.id (getDb ()).SeenCommunityPosts) then
                         yield
                             $"**{channelTitle}** has a new community post: \n"
-                            + (post.contentText |> List.map (fun x -> x.text) |> String.concat "\n")
+                            + (post.contentText |> List.map (fun x -> x.text) |> String.concat "")
                             + $"\n\nSee full post at https://www.youtube.com/post/%s{post.id}"
 
                 let postIds = channel.Community |> List.map (fun x -> x.id)
