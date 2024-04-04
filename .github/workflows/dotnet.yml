@@ -29,6 +29,9 @@ jobs:
         path: ~/.nuget/packages
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
 
+    - name: Create configuration file
+      run: cp config-sample.json config.json
+
     - name: Install dependencies
       run: |
         dotnet restore
