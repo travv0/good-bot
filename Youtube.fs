@@ -93,13 +93,8 @@ let getYoutubeUpdates () : string option list =
                   MaxResults = 50L,
                   PublishedAfter =
                       (Map.tryFind channelId (getDb ()).LastYoutubeFetch
-                       |> Option.defaultValue (DateTime.Now.AddHours(-1)))
+                       |> Option.defaultValue (DateTime.UtcNow.AddHours(-1)))
               )
-
-          updateDb
-              { (getDb ()) with
-                  LastYoutubeFetch =
-                      Map.add channelId DateTime.Now (getDb ()).LastYoutubeFetch }
 
           let response = listRequest.ExecuteAsync().Result
 
@@ -118,64 +113,91 @@ let getYoutubeUpdates () : string option list =
               | Some title -> title
               | None -> channelId
 
-          for item in response.Items do
-              match item.Snippet.Type with
-              | "channelItem" ->
-                  yield
-                      Some(
-                          $"**{channelTitle}** has a new channel item, whatever that is: "
-                          + urlByResourceIdKind
-                              item.ContentDetails.ChannelItem.ResourceId
-                      )
-              | "favorite" ->
-                  yield
-                      Some(
-                          "$**{channelTitle}** has a new favorite! I wonder what kind of cool thing it could be? "
-                          + urlByResourceIdKind
-                              item.ContentDetails.Favorite.ResourceId
-                      )
-              | "like" ->
-                  yield
-                      Some(
-                          $"**{channelTitle}** liked something. I bet it's not weird at all: "
-                          + urlByResourceIdKind
-                              item.ContentDetails.Like.ResourceId
-                      )
-              | "playlistItem" ->
-                  yield
-                      Some(
-                          $"**{channelTitle}** added a new video to their playlist: "
-                          + urlByResourceIdKind
-                              item.ContentDetails.PlaylistItem.ResourceId
-                      )
-              | "recommendation" ->
-                  yield
-                      Some(
-                          $"**{channelTitle}** has a new recommendation for you: "
-                          + urlByResourceIdKind
-                              item.ContentDetails.Recommendation.ResourceId
-                      )
-              | "social" ->
-                  yield
-                      Some(
-                          $"**{channelTitle}** has a new social thing, that social butterfly: "
-                          + urlByResourceIdKind
-                              item.ContentDetails.Social.ResourceId
-                      )
-              | "subscription" ->
-                  yield
-                      Some(
-                          $"**{channelTitle}** has subscribed to a user. More quality content in their future! "
-                          + urlByResourceIdKind
-                              item.ContentDetails.Subscription.ResourceId
-                      )
-              | "upload" ->
-                  yield
-                      Some(
-                          $"**{channelTitle}** has uploaded a new video: "
-                          + $"https://www.youtube.com/watch?v=%s{item.ContentDetails.Upload.VideoId}"
-                      )
-              | _ -> yield None ]
+          let result =
+              [ for item in response.Items do
+                    match item.Snippet.Type with
+                    | "channelItem" ->
+                        yield
+                            Some(
+                                $"**{channelTitle}** has a new channel item, whatever that is: "
+                                + urlByResourceIdKind
+                                    item.ContentDetails.ChannelItem.ResourceId
+                            )
+                    | "favorite" ->
+                        yield
+                            Some(
+                                "$**{channelTitle}** has a new favorite! I wonder what kind of cool thing it could be? "
+                                + urlByResourceIdKind
+                                    item.ContentDetails.Favorite.ResourceId
+                            )
+                    | "like" ->
+                        yield
+                            Some(
+                                $"**{channelTitle}** liked something. I bet it's not weird at all: "
+                                + urlByResourceIdKind
+                                    item.ContentDetails.Like.ResourceId
+                            )
+                    | "playlistItem" ->
+                        yield
+                            Some(
+                                $"**{channelTitle}** added a new video to their playlist: "
+                                + urlByResourceIdKind
+                                    item.ContentDetails.PlaylistItem.ResourceId
+                            )
+                    | "recommendation" ->
+                        yield
+                            Some(
+                                $"**{channelTitle}** has a new recommendation for you: "
+                                + urlByResourceIdKind
+                                    item.ContentDetails.Recommendation.ResourceId
+                            )
+                    | "social" ->
+                        yield
+                            Some(
+                                $"**{channelTitle}** has a new social thing, that social butterfly: "
+                                + urlByResourceIdKind
+                                    item.ContentDetails.Social.ResourceId
+                            )
+                    | "subscription" ->
+                        yield
+                            Some(
+                                $"**{channelTitle}** has subscribed to a user. More quality content in their future! "
+                                + urlByResourceIdKind
+                                    item.ContentDetails.Subscription.ResourceId
+                            )
+                    | "upload" ->
+                        yield
+                            Some(
+                                $"**{channelTitle}** has uploaded a new video: "
+                                + $"https://www.youtube.com/watch?v=%s{item.ContentDetails.Upload.VideoId}"
+                            )
+                    | _ -> yield None ]
+
+          let latestItem =
+              if response.Items.Count = 0 then
+                  None
+              else
+                  response.Items
+                  |> Seq.maxBy (fun i ->
+                      match DateTime.TryParse(i.Snippet.PublishedAtRaw) with
+                      | true, dt -> dt
+                      | _ -> DateTime.MinValue)
+                  |> Option.ofObj
+
+          match latestItem with
+          | Some item ->
+              updateDb
+                  { (getDb ()) with
+                      LastYoutubeFetch =
+                          Map.add
+                              channelId
+                              (DateTime
+                                  .Parse(item.Snippet.PublishedAtRaw)
+                                  .AddMilliseconds(1))
+                              (getDb ()).LastYoutubeFetch }
+          | None -> ()
+
+          yield! result ]
 
 type ContentText =
     { text: string }
