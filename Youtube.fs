@@ -200,22 +200,55 @@ let getYoutubeUpdates () : string option list =
           yield! result ]
 
 type ContentText =
-    { text: string }
-
-    static member Decoder =
-        Decode.map
-            (fun text -> { text = text })
-            (Decode.field "text" Decode.string)
-
-type Community =
-    { id: string
-      contentText: ContentText list }
+    { text: string
+      url: string option }
 
     static member Decoder =
         Decode.map2
-            (fun id contentText -> { id = id; contentText = contentText })
+            (fun text url -> { text = text; url = url })
+            (Decode.field "text" Decode.string)
+            (Decode.optional "url" Decode.string)
+
+type Thumbnail =
+    { url: string
+      width: int
+      height: int }
+
+    static member Decoder =
+        Decode.map3
+            (fun url width height ->
+                { url = url
+                  width = width
+                  height = height })
+            (Decode.field "url" Decode.string)
+            (Decode.field "width" Decode.int)
+            (Decode.field "height" Decode.int)
+
+type Image =
+    { thumbnails: Thumbnail list }
+
+    static member Decoder =
+        Decode.map
+            (fun thumbnails -> { thumbnails = thumbnails })
+            (Decode.field "thumbnails" (Decode.list Thumbnail.Decoder))
+
+type Community =
+    { id: string
+      contentText: ContentText list
+      videoId: string option
+      images: Image list }
+
+    static member Decoder =
+        Decode.map4
+            (fun id contentText videoId images ->
+                { id = id
+                  contentText = contentText
+                  videoId = videoId
+                  images = images })
             (Decode.field "id" Decode.string)
             (Decode.field "contentText" (Decode.list ContentText.Decoder))
+            (Decode.field "videoId" (Decode.option Decode.string))
+            (Decode.field "images" (Decode.list Image.Decoder))
 
 type Channel =
     { id: string
@@ -260,6 +293,16 @@ let getCommunityUpdates () : string list =
                               $"**{channelTitle}** has a new community post: \n"
                               + (post.contentText
                                  |> List.map (fun x -> x.text)
+                                 |> String.concat "")
+                              + (match post.videoId with
+                                 | Some videoId ->
+                                     $"\n\nhttps://www.youtube.com/watch?v=%s{videoId}"
+                                 | None -> "")
+                              + (post.images
+                                 |> List.map (fun i -> Seq.tryLast i.thumbnails)
+                                 |> List.choose id
+                                 |> List.map (fun t -> t.url)
+                                 |> List.map (fun url -> $"\n[Image]({url})")
                                  |> String.concat "")
                               + $"\n\nSee full post at https://www.youtube.com/post/%s{post.id}"
 
