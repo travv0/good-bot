@@ -44,7 +44,7 @@ type Db =
               LastResponse = Decode.string |> get.Optional.Field "LastResponse"
               YoutubeUpdatesChannel =
                 Decode.string
-                |> get.Optional.Field "YoutubeChannel"
+                |> get.Optional.Field "YoutubeUpdatesChannel"
                 |> Option.map uint64
               YoutubeChannelTitles =
                 Decode.dict Decode.string
