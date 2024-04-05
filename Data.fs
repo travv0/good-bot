@@ -24,8 +24,9 @@ let mutable private db =
           AutoReplies = Map.empty
           AutoReplyRates = Map.empty
           LastResponse = None
-          YoutubeChannel = None
+          YoutubeUpdatesChannel = None
           YoutubeChannels = Set.empty
+          YoutubeChannelTitles = Map.empty 
           LastYoutubeFetch = Map.empty
           SeenCommunityPosts = Set.empty }
 

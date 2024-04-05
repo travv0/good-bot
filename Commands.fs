@@ -514,12 +514,12 @@ type Commands() =
             do! ctx.TriggerTypingAsync()
 
             if
-                Option.isNone (getDb ()).YoutubeChannel
+                Option.isNone (getDb ()).YoutubeUpdatesChannel
                 && ctx.Guild.SystemChannel <> null
             then
                 updateDb
                     { (getDb ()) with
-                        YoutubeChannel = Some ctx.Guild.SystemChannel.Id }
+                        YoutubeUpdatesChannel = Some ctx.Guild.SystemChannel.Id }
 
             match! Youtube.getYoutubeChannelId channel with
             | None ->
@@ -599,7 +599,7 @@ type Commands() =
 
             updateDb
                 { (getDb ()) with
-                    YoutubeChannel = Some channel.Id }
+                    YoutubeUpdatesChannel = Some channel.Id }
 
             ctx.RespondChunked(
                 $"Set YouTube updates channel to **#%s{channel.Name}**"
@@ -612,7 +612,7 @@ type Commands() =
         task {
             do! ctx.TriggerTypingAsync()
 
-            match (getDb ()).YoutubeChannel with
+            match (getDb ()).YoutubeUpdatesChannel with
             | None -> ctx.RespondChunked("No YouTube updates channel set")
             | Some channelId ->
                 let channel = ctx.Guild.GetChannel channelId

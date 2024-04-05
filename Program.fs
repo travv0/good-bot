@@ -14,7 +14,7 @@ module Core =
     let rand = Random()
 
     let rec postYoutubeUpdates (dis: DiscordClient) =
-        match (getDb ()).YoutubeChannel with
+        match (getDb ()).YoutubeUpdatesChannel with
         | Some channel ->
             let updates = Youtube.getYoutubeUpdates ()
             let communityUpdates = Youtube.getCommunityUpdates ()

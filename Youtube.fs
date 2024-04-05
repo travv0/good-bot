@@ -52,22 +52,35 @@ let getYoutubeChannelId (channel: string) =
 
 let getChannelTitleByChannelId (channelId: string) =
     task {
-        let searchRequest =
-            ChannelsResource.ListRequest(
-                youtubeService,
-                Repeatable([| "brandingSettings" |]),
-                Id = Repeatable([| channelId |]),
-                MaxResults = 1L
-            )
+        match Map.tryFind channelId (getDb ()).YoutubeChannelTitles with
+        | Some title -> return Some title
+        | None ->
+            let searchRequest =
+                ChannelsResource.ListRequest(
+                    youtubeService,
+                    Repeatable([| "brandingSettings" |]),
+                    Id = Repeatable([| channelId |]),
+                    MaxResults = 1L
+                )
 
-        let! response = searchRequest.ExecuteAsync()
+            let! response = searchRequest.ExecuteAsync()
 
-        return
-            match response.Items with
-            | null -> None
-            | items when items.Count > 0 ->
-                Some items.[0].BrandingSettings.Channel.Title
-            | _ -> None
+            return
+                match response.Items with
+                | null -> None
+                | items when items.Count > 0 ->
+                    let title = items[0].BrandingSettings.Channel.Title
+
+                    updateDb
+                        { (getDb ()) with
+                            YoutubeChannelTitles =
+                                Map.add
+                                    channelId
+                                    title
+                                    (getDb ()).YoutubeChannelTitles }
+
+                    Some title
+                | _ -> None
     }
 
 let getYoutubeUpdates () : string option list =
@@ -202,27 +215,40 @@ type ChannelList =
 
 let getCommunityUpdates () : string list =
     [ for channelId in (getDb ()).YoutubeChannels do
-        let channelTitle = match (getChannelTitleByChannelId channelId).Result with
-                           | Some title -> title
-                           | None -> channelId
-        let communityApiUrl = $"https://yt.lemnoslife.com/channels?part=community,snippet&id=%s{channelId}"
-        let response = Http.RequestString(communityApiUrl)
+          let channelTitle =
+              match (getChannelTitleByChannelId channelId).Result with
+              | Some title -> title
+              | None -> channelId
 
-        match response |> Decode.fromString ChannelList.Decoder with
-        | Ok channelList ->
-            for channel in channelList.items do
-                for post in channel.Community do
-                    if not (Set.contains post.id (getDb ()).SeenCommunityPosts) then
-                        yield
-                            $"**{channelTitle}** has a new community post: \n"
-                            + (post.contentText |> List.map (fun x -> x.text) |> String.concat "")
-                            + $"\n\nSee full post at https://www.youtube.com/post/%s{post.id}"
+          let communityApiUrl =
+              $"https://yt.lemnoslife.com/channels?part=community,snippet&id=%s{channelId}"
 
-                let postIds = channel.Community |> List.map (fun x -> x.id)
-                updateDb
-                    { (getDb ()) with
-                         SeenCommunityPosts = Set.union (getDb ()).SeenCommunityPosts (Set.ofList postIds )}
-        | Error error ->
-            yield
-                $"Error decoding community post for channel {channelId}: {error}"
-    ]
+          let response = Http.RequestString(communityApiUrl)
+
+          match response |> Decode.fromString ChannelList.Decoder with
+          | Ok channelList ->
+              for channel in channelList.items do
+                  for post in channel.Community do
+                      if
+                          not (
+                              Set.contains post.id (getDb ()).SeenCommunityPosts
+                          )
+                      then
+                          yield
+                              $"**{channelTitle}** has a new community post: \n"
+                              + (post.contentText
+                                 |> List.map (fun x -> x.text)
+                                 |> String.concat "")
+                              + $"\n\nSee full post at https://www.youtube.com/post/%s{post.id}"
+
+                  let postIds = channel.Community |> List.map (fun x -> x.id)
+
+                  updateDb
+                      { (getDb ()) with
+                          SeenCommunityPosts =
+                              Set.union
+                                  (getDb ()).SeenCommunityPosts
+                                  (Set.ofList postIds) }
+          | Error error ->
+              yield
+                  $"Error decoding community post for channel {channelId}: {error}" ]
