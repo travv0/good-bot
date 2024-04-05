@@ -193,7 +193,7 @@ let getYoutubeUpdates () : string option list =
                               channelId
                               (DateTime
                                   .Parse(item.Snippet.PublishedAtRaw)
-                                  .AddMilliseconds(1))
+                                  .AddSeconds(1))
                               (getDb ()).LastYoutubeFetch }
           | None -> ()
 
