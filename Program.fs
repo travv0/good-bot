@@ -38,11 +38,16 @@ module Core =
                 | None -> ()
 
             for update in communityUpdates do
-                dis.SendMessageAsync(
-                    dis.GetChannelAsync(uint64 channel).Result,
-                    update
-                )
-                |> ignore
+                match update with
+                | Ok update ->
+                    dis.SendMessageAsync(
+                        dis.GetChannelAsync(uint64 channel).Result,
+                        update
+                    )
+                    |> ignore
+                | Error e ->
+                    dis.Logger.LogError
+                        $"Error getting Youtube community update from channel %d{channel}: %s{e}"
         | None -> ()
 
         Thread.Sleep(1000 * 60)

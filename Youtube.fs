@@ -268,7 +268,7 @@ type ChannelList =
             (fun items -> { items = items })
             (Decode.field "items" (Decode.list Channel.Decoder))
 
-let getCommunityUpdates () : string list =
+let getCommunityUpdates () : Result<string, string> list =
     [ for channelId in (getDb ()).YoutubeChannels do
           let channelTitle =
               match (getChannelTitleByChannelId channelId).Result with
@@ -290,21 +290,25 @@ let getCommunityUpdates () : string list =
                           )
                       then
                           yield
-                              $"**{channelTitle}** has a new community post: \n"
-                              + (post.contentText
-                                 |> List.map (fun x -> x.text)
-                                 |> String.concat "")
-                              + (match post.videoId with
-                                 | Some videoId ->
-                                     $"\n\nhttps://www.youtube.com/watch?v=%s{videoId}"
-                                 | None -> "")
-                              + (post.images
-                                 |> List.map (fun i -> Seq.tryLast i.thumbnails)
-                                 |> List.choose id
-                                 |> List.map (fun t -> t.url)
-                                 |> List.map (fun url -> $"\n[Image]({url})")
-                                 |> String.concat "")
-                              + $"\n\nSee full post at https://www.youtube.com/post/%s{post.id}"
+                              Ok(
+                                  $"**{channelTitle}** has a new community post: \n"
+                                  + (post.contentText
+                                     |> List.map (fun x -> x.text)
+                                     |> String.concat "")
+                                  + (match post.videoId with
+                                     | Some videoId ->
+                                         $"\n\nhttps://www.youtube.com/watch?v=%s{videoId}"
+                                     | None -> "")
+                                  + (post.images
+                                     |> List.map (fun i ->
+                                         Seq.tryLast i.thumbnails)
+                                     |> List.choose id
+                                     |> List.map (fun t -> t.url)
+                                     |> List.map (fun url ->
+                                         $"\n[Image]({url})")
+                                     |> String.concat "")
+                                  + $"\n\nSee full post at https://www.youtube.com/post/%s{post.id}"
+                              )
 
                   let postIds = channel.Community |> List.map (fun x -> x.id)
 
@@ -314,6 +318,4 @@ let getCommunityUpdates () : string list =
                               Set.union
                                   (getDb ()).SeenCommunityPosts
                                   (Set.ofList postIds) }
-          | Error error ->
-              yield
-                  $"Error decoding community post for channel {channelId}: {error}" ]
+          | Error error -> yield Error(error) ]
