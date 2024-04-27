@@ -16,38 +16,47 @@ module Core =
     let rec postYoutubeUpdates (dis: DiscordClient) =
         match (getDb ()).YoutubeUpdatesChannel with
         | Some channel ->
-            let updates = Youtube.getYoutubeUpdates ()
-            let communityUpdates = Youtube.getCommunityUpdates ()
+            try
+                let updates = Youtube.getYoutubeUpdates ()
 
-            if List.length communityUpdates > 0 then
-                dis.Logger.LogInformation
-                    $"Found %d{List.length communityUpdates} new Youtube community updates"
+                if List.length updates > 0 then
+                    dis.Logger.LogInformation
+                        $"Found %d{List.length updates} new Youtube updates"
 
-            if List.length updates > 0 then
-                dis.Logger.LogInformation
-                    $"Found %d{List.length updates} new Youtube updates"
+                for update in updates do
+                    match update with
+                    | Some update ->
+                        dis.SendMessageAsync(
+                            dis.GetChannelAsync(uint64 channel).Result,
+                            update
+                        )
+                        |> ignore
+                    | None -> ()
+            with exn ->
+                dis.Logger.LogError
+                    $"Error getting Youtube updates: %s{exn.Message}"
 
-            for update in updates do
-                match update with
-                | Some update ->
-                    dis.SendMessageAsync(
-                        dis.GetChannelAsync(uint64 channel).Result,
-                        update
-                    )
-                    |> ignore
-                | None -> ()
+            try
+                let communityUpdates = Youtube.getCommunityUpdates ()
 
-            for update in communityUpdates do
-                match update with
-                | Ok update ->
-                    dis.SendMessageAsync(
-                        dis.GetChannelAsync(uint64 channel).Result,
-                        update
-                    )
-                    |> ignore
-                | Error e ->
-                    dis.Logger.LogError
-                        $"Error getting Youtube community update from channel %d{channel}: %s{e}"
+                if List.length communityUpdates > 0 then
+                    dis.Logger.LogInformation
+                        $"Found %d{List.length communityUpdates} new Youtube community updates"
+
+                for update in communityUpdates do
+                    match update with
+                    | Ok update ->
+                        dis.SendMessageAsync(
+                            dis.GetChannelAsync(uint64 channel).Result,
+                            update
+                        )
+                        |> ignore
+                    | Error e ->
+                        dis.Logger.LogError
+                            $"Error getting Youtube community update from channel %d{channel}: %s{e}"
+            with exn ->
+                dis.Logger.LogError
+                    $"Error getting Youtube community updates: %s{exn.Message}"
         | None -> ()
 
         Thread.Sleep(1000 * 60)
